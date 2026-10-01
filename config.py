@@ -4,6 +4,19 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 
+# Automatically load .env file if present
+env_path = BASE_DIR / '.env'
+if env_path.exists():
+    with open(env_path, 'r', encoding='utf-8') as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith('#') and '=' in line:
+                key, val = line.split('=', 1)
+                key = key.strip()
+                val = val.strip().strip("'\"")
+                if key and key not in os.environ:
+                    os.environ[key] = val
+
 class Config:
     SECRET_KEY = os.environ.get('SECRET_KEY', 'sentinel-api-sec-key-production-098f6bcd4621d373cade4e832627b4f6')
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL', f"sqlite:///{BASE_DIR / 'database' / 'sentinelapi.db'}")
