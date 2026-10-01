@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}SentinelAPI | Production-Grade API Security & Risk Management{% endblock %}
+
+{% block public_content %}
+<div style="min-height: 100vh; display: flex; flex-direction: column;">
+    <!-- Landing Navigation -->
+    <header style="padding: 16px 48px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-color); background: rgba(5, 8, 22, 0.85); backdrop-filter: blur(10px); position: sticky; top: 0; z-index: 50;">
+        <div style="display: flex; align-items: center; gap: var(--space-3);">
+            <div class="brand-icon">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#050816" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+            </div>
+            <div>
+                <div style="font-size: 18px; font-weight: 700; font-family: var(--font-heading); color: #fff;">SentinelAPI</div>
+                <div style="font-size: 10px; color: var(--cyan-primary); letter-spacing: 0.08em; font-weight: 700;">ENTERPRISE API DEFENSE</div>
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: var(--space-3);">
+            <a href="{{ url_for('auth.login_page') }}" class="btn btn-secondary btn-sm">
+                <span>Sign In</span>
+            </a>
+            <a href="{{ url_for('auth.register_page') }}" class="btn btn-primary btn-sm">
+                <span>Create Account</span>
+            </a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section style="padding: 80px 24px 60px; text-align: center; max-width: 960px; margin: 0 auto; position: relative;">
+        <div style="display: inline-flex; align-items: center; gap: var(--space-2); padding: 6px 14px; background: var(--cyan-subtle); border: 1px solid rgba(0, 229, 255, 0.25); border-radius: var(--radius-full); color: var(--cyan-primary); font-size: 12px; font-weight: 600; margin-bottom: var(--space-6);">
+            <i data-icon="shield-check" data-size="14" data-color="var(--cyan-primary)"></i>
+            <span>NEXT-GEN API VULNERABILITY SCANNER & RISK RADAR</span>
+        </div>
+        <h1 style="font-size: 44px; line-height: 1.18; margin-bottom: var(--space-5); font-weight: 800;">
+            Continuous API Security Testing, <br>
+            <span style="background: linear-gradient(135deg, var(--cyan-primary), var(--purple-primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Drift Detection & Risk Control</span>
+        </h1>
+        <p style="font-size: 16px; color: var(--text-secondary); max-width: 700px; margin: 0 auto var(--space-8); line-height: 1.6;">
+            Safeguard your microservices and REST APIs against OWASP API Top 10 vulnerabilities, broken object-level controls, sensitive credential leaks, and undocumented endpoint drift.
+        </p>
+        <div style="display: flex; justify-content: center; gap: var(--space-4); flex-wrap: wrap;">
+            <a href="{{ url_for('auth.register_page') }}" class="btn btn-primary btn-lg">
+                <span>Get Started Free</span>
+                <i data-icon="arrow-right" data-size="16"></i>
+            </a>
+            <a href="{{ url_for('auth.login_page') }}" class="btn btn-secondary btn-lg">
+                <i data-icon="shield" data-size="16"></i>
+                <span>Enter Platform</span>
+            </a>
+        </div>
+    </section>
+
+    <!-- Capabilities Grid -->
+    <section style="padding: 40px 24px 80px; max-width: 1200px; margin: 0 auto;">
+        <h2 style="text-align: center; font-size: 26px; margin-bottom: var(--space-10);">Engineered for Production API Ecosystems</h2>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: var(--space-6);">
+            <div class="card" style="padding: var(--space-6);">
+                <div class="empty-icon" style="justify-content: flex-start; margin-bottom: var(--space-4); color: var(--cyan-primary);">
+                    <i data-icon="import" data-size="28" data-color="var(--cyan-primary)"></i>
+                </div>
+                <h3 style="font-size: 17px; margin-bottom: var(--space-2);">Universal API Discovery</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                    Import OpenAPI 3.x and Swagger 2.0 specifications via JSON, YAML, raw payload pasting, or remote URLs safeguarded by multi-layer anti-SSRF protection.
+                </p>
+            </div>
+
+            <div class="card" style="padding: var(--space-6);">
+                <div class="empty-icon" style="justify-content: flex-start; margin-bottom: var(--space-4); color: var(--purple-primary);">
+                    <i data-icon="scan" data-size="28" data-color="var(--purple-primary)"></i>
+                </div>
+                <h3 style="font-size: 17px; margin-bottom: var(--space-2);">Modular Security Testing</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                    Comprehensive checks for BOLA/IDOR, BFLA, SQL/Command Injection, Secret Exposure, PII Leakage, Mass Assignment, and Rate Limiting.
+                </p>
+            </div>
+
+            <div class="card" style="padding: var(--space-6);">
+                <div class="empty-icon" style="justify-content: flex-start; margin-bottom: var(--space-4); color: var(--color-medium);">
+                    <i data-icon="drift" data-size="28" data-color="var(--color-medium)"></i>
+                </div>
+                <h3 style="font-size: 17px; margin-bottom: var(--space-2);">Schema Drift & Regressions</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                    Detect undocumented endpoints, schema alterations, and security regression states when previously patched vulnerabilities reappear.
+                </p>
+            </div>
+
+            <div class="card" style="padding: var(--space-6);">
+                <div class="empty-icon" style="justify-content: flex-start; margin-bottom: var(--space-4); color: var(--color-critical);">
+                    <i data-icon="findings" data-size="28" data-color="var(--color-critical)"></i>
+                </div>
+                <h3 style="font-size: 17px; margin-bottom: var(--space-2);">Verified Evidence & Zero Fakes</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                    Every finding includes raw request/response captures, verification notes, CVSS metrics, and actionable remediation steps.
+                </p>
+            </div>
+
+            <div class="card" style="padding: var(--space-6);">
+                <div class="empty-icon" style="justify-content: flex-start; margin-bottom: var(--space-4); color: var(--color-low);">
+                    <i data-icon="monitoring" data-size="28" data-color="var(--color-low)"></i>
+                </div>
+                <h3 style="font-size: 17px; margin-bottom: var(--space-2);">Continuous Monitoring</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                    Schedule automated scanning routines, track historical security postures, and monitor API inventory changes continuously.
+                </p>
+            </div>
+
+            <div class="card" style="padding: var(--space-6);">
+                <div class="empty-icon" style="justify-content: flex-start; margin-bottom: var(--space-4); color: var(--color-info);">
+                    <i data-icon="settings" data-size="28" data-color="var(--color-info)"></i>
+                </div>
+                <h3 style="font-size: 17px; margin-bottom: var(--space-2);">Enterprise RBAC & Audit</h3>
+                <p style="color: var(--text-secondary); font-size: 13px; line-height: 1.6;">
+                    Granular role-based access control (Owner, Administrator, Security Analyst, Viewer) with tamper-resistant audit logs.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer style="margin-top: auto; padding: var(--space-6) 48px; border-top: 1px solid var(--border-color); text-align: center; color: var(--text-muted); font-size: 12px;">
+        <p>© 2026 SentinelAPI Platform. Designed for Enterprise Security Operations.</p>
+    </footer>
+</div>
+{% endblock %}

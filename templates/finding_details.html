@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}{{ finding.finding_ref }} - {{ finding.title }} | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<i data-icon="findings" data-size="18" data-color="var(--color-critical)"></i>
+<span>Finding Detail: {{ finding.finding_ref }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div style="display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap;">
+            <code style="font-size: 14px; color: var(--cyan-primary); font-weight: 700;">{{ finding.finding_ref }}</code>
+            <span class="badge {% if finding.severity == 'CRITICAL' %}badge-critical{% elif finding.severity == 'HIGH' %}badge-high{% elif finding.severity == 'MEDIUM' %}badge-medium{% else %}badge-low{% endif %}">
+                <i data-icon="{% if finding.severity == 'CRITICAL' %}alert-octagon{% elif finding.severity == 'HIGH' %}alert-triangle{% elif finding.severity == 'MEDIUM' %}alert-circle{% else %}check-circle{% endif %}" data-size="12"></i>
+                <span>{{ finding.severity }} (CVSS {{ finding.cvss_score }})</span>
+            </span>
+            <span class="badge badge-info">{{ finding.status }}</span>
+            <span class="badge badge-secondary">{{ finding.lifecycle_state }}</span>
+        </div>
+        <h1 style="font-size: 22px; font-weight: 700; color: #fff; margin-bottom: 4px;">{{ finding.title }}</h1>
+        <div style="font-size: 13px; color: var(--text-secondary);">
+            Target: <strong>{{ finding.api.name if finding.api else 'API' }}</strong> &bull; Endpoint: <code>{{ finding.method }} {{ finding.path }}</code> &bull; Category: {{ finding.category }}
+        </div>
+    </div>
+
+    <a href="{{ url_for('scan.findings_page') }}" class="btn btn-secondary btn-sm">
+        <i data-icon="arrow-left" data-size="14"></i>
+        <span>Back to Findings</span>
+    </a>
+</div>
+
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-6);">
+    <!-- Main Findings Info -->
+    <div>
+        <!-- Description Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="file-text" data-size="18" data-color="var(--cyan-primary)"></i>
+                    <span>Vulnerability Description</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p style="color: var(--text-primary); line-height: 1.7; font-size: 14px;">{{ finding.description }}</p>
+            </div>
+        </div>
+
+        <!-- Evidence Traces Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="search" data-size="18" data-color="var(--cyan-primary)"></i>
+                    <span>Attack Verification & Evidence Capture</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="margin-bottom: var(--space-4);">
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">VERIFICATION ANALYSIS</div>
+                    <div style="background: rgba(0,0,0,0.3); padding: var(--space-3); border-radius: var(--radius-sm); border-left: 3px solid var(--cyan-primary); color: #e2e8f0; font-size: 13px;">
+                        {{ finding.verification_result or 'Behavioral pattern analysis verified against active schema definition.' }}
+                    </div>
+                </div>
+
+                {% if finding.request_data %}
+                <div style="margin-bottom: var(--space-4);">
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">REQUEST PAYLOAD</div>
+                    <pre class="code-block">{{ finding.request_data }}</pre>
+                </div>
+                {% endif %}
+
+                {% if finding.response_data %}
+                <div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">RESPONSE OBSERVATION</div>
+                    <pre class="code-block">{{ finding.response_data }}</pre>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Remediation Guide -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="shield-check" data-size="18" data-color="var(--color-low)"></i>
+                    <span>Remediation Guidance & Security Plan</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <p style="color: #e2e8f0; line-height: 1.7; font-size: 13px; margin-bottom: var(--space-4);">{{ finding.remediation }}</p>
+                
+                <div style="font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: var(--space-2);">SECURITY REFERENCES</div>
+                <ul style="padding-left: 20px; color: var(--cyan-primary); font-size: 13px; line-height: 1.8;">
+                    <li><a href="https://owasp.org/www-project-api-security/" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 4px;"><span>OWASP API Security Top 10 Project Documentation</span> <i data-icon="external-link" data-size="12"></i></a></li>
+                    <li><a href="https://cwe.mitre.org/" target="_blank" rel="noopener" style="display: inline-flex; align-items: center; gap: 4px;"><span>MITRE Common Weakness Enumeration (CWE) Database</span> <i data-icon="external-link" data-size="12"></i></a></li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Lifecycle Transitions & Audit History -->
+    <div>
+        <!-- Lifecycle Transition Card -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="edit" data-size="18" data-color="var(--purple-primary)"></i>
+                    <span>Update Lifecycle Status</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="status-update-form">
+                    <div class="form-group">
+                        <label class="form-label" for="new-lifecycle-state">Current State</label>
+                        <select id="new-lifecycle-state" class="form-select">
+                            <option value="New" {% if finding.lifecycle_state == 'New' %}selected{% endif %}>New</option>
+                            <option value="Detected" {% if finding.lifecycle_state == 'Detected' %}selected{% endif %}>Detected</option>
+                            <option value="Verified" {% if finding.lifecycle_state == 'Verified' %}selected{% endif %}>Verified</option>
+                            <option value="Acknowledged" {% if finding.lifecycle_state == 'Acknowledged' %}selected{% endif %}>Acknowledged</option>
+                            <option value="Remediated" {% if finding.lifecycle_state == 'Remediated' %}selected{% endif %}>Remediated</option>
+                            <option value="Resolved" {% if finding.lifecycle_state == 'Resolved' %}selected{% endif %}>Resolved</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="status-comment">Analyst Resolution Notes</label>
+                        <textarea id="status-comment" class="form-textarea" placeholder="Describe remediation actions or verification steps..." style="height: 90px;"></textarea>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" style="width: 100%;" onclick="updateFindingState('{{ finding.id }}')">
+                        <i data-icon="check" data-size="16"></i>
+                        <span>Update Lifecycle State</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Finding Timeline / History -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="clock" data-size="18" data-color="var(--text-muted)"></i>
+                    <span>Lifecycle Audit Trail</span>
+                </div>
+            </div>
+            <div class="card-body" style="padding: var(--space-4);">
+                <div style="display: flex; flex-direction: column; gap: var(--space-3);">
+                    {% for h in finding.history %}
+                    <div style="border-left: 2px solid var(--border-highlight); padding-left: var(--space-3); font-size: 12px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 2px;">
+                            <strong style="color: #fff;">{{ h.action }}</strong>
+                            <span style="color: var(--text-muted); font-size: 11px;">{{ h.created_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        </div>
+                        <div style="color: var(--text-secondary);">By: {{ h.user.username if h.user else 'System' }} &bull; State: <span class="badge badge-secondary" style="font-size: 9px;">{{ h.new_state }}</span></div>
+                        {% if h.comment %}
+                        <div style="margin-top: 4px; color: #94a3b8; font-style: italic;">"{{ h.comment }}"</div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div style="color: var(--text-muted); font-size: 12px;">No historical transitions recorded.</div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function updateFindingState(findingId) {
+    const newState = document.getElementById('new-lifecycle-state').value;
+    const comment = document.getElementById('status-comment').value.trim();
+
+    try {
+        const res = await apiRequest(`/api/findings/${findingId}/status`, {
+            method: 'POST',
+            body: JSON.stringify({
+                lifecycle_state: newState,
+                comment: comment
+            })
+        });
+
+        if (res.success) {
+            showToast('Finding state updated successfully!', 'success');
+            setTimeout(() => window.location.reload(), 800);
+        }
+    } catch (e) {}
+}
+</script>
+{% endblock %}

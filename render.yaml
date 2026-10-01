@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: sentinelapi
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: DATABASE_URL
+        value: sqlite:////var/data/sentinelapi.db
+    disk:
+      name: sentinelapi-data
+      mountPath: /var/data
+      sizeGB: 1

@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+
+{% block title %}Import & Discover APIs | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<i data-icon="import" data-size="18" data-color="var(--cyan-primary)"></i>
+<span>Import & Discover API Specifications</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Specification Ingestion Hub</h1>
+        <p class="page-subtitle">Ingest OpenAPI 3.x and Swagger 2.0 specifications via file upload, raw text, or SSRF-protected remote URLs.</p>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr; gap: var(--space-6);">
+    <!-- Import Methods Selector Card -->
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title">
+                <i data-icon="import" data-size="18" data-color="var(--cyan-primary)"></i>
+                <span>Ingestion Method</span>
+            </div>
+            <span class="badge badge-info">OpenAPI 3.x & Swagger 2.0</span>
+        </div>
+        <div class="card-body">
+            <!-- Tabs -->
+            <div style="display: flex; gap: var(--space-2); border-bottom: 1px solid var(--border-color); padding-bottom: var(--space-4); margin-bottom: var(--space-6); flex-wrap: wrap;">
+                <button type="button" class="btn btn-primary btn-sm import-tab-btn" data-tab="tab-upload">
+                    <i data-icon="file-code" data-size="14"></i>
+                    <span>Upload File (JSON/YAML)</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm import-tab-btn" data-tab="tab-raw">
+                    <i data-icon="edit" data-size="14"></i>
+                    <span>Paste Raw Spec</span>
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm import-tab-btn" data-tab="tab-url">
+                    <i data-icon="api" data-size="14"></i>
+                    <span>Remote Spec URL</span>
+                </button>
+            </div>
+
+            <!-- Tab 1: Upload File -->
+            <div id="tab-upload" class="import-tab-content">
+                <form id="form-upload" enctype="multipart/form-data">
+                    <input type="file" id="spec_file" name="spec_file" accept=".json,.yaml,.yml" style="display: none;" onchange="handleFileSelected(this.files)">
+                    
+                    <!-- File Dropzone -->
+                    <div id="dropzone-area" class="file-dropzone" onclick="document.getElementById('spec_file').click()">
+                        <div class="file-dropzone-icon">
+                            <i data-icon="import" data-size="24" data-color="var(--cyan-primary)"></i>
+                        </div>
+                        <div class="file-dropzone-title">Click to browse or drag and drop your specification</div>
+                        <div class="file-dropzone-subtitle">Attach an OpenAPI 3.x or Swagger 2.0 schema definition file</div>
+                        <div class="file-dropzone-tags">
+                            <span class="file-dropzone-tag">.JSON</span>
+                            <span class="file-dropzone-tag">.YAML</span>
+                            <span class="file-dropzone-tag">.YML</span>
+                            <span class="file-dropzone-tag">Max 10 MB</span>
+                        </div>
+                    </div>
+
+                    <!-- File Selected State Card (Hidden by default) -->
+                    <div id="file-selected-card" class="file-selected-card" style="display: none;">
+                        <div class="file-selected-info">
+                            <div class="file-selected-icon">
+                                <i data-icon="file-code" data-size="20" data-color="var(--cyan-primary)"></i>
+                            </div>
+                            <div>
+                                <div id="selected-file-name" class="file-selected-name">filename.json</div>
+                                <div id="selected-file-size" class="file-selected-size">0 KB</div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: var(--space-2); align-items: center;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); document.getElementById('spec_file').click();">
+                                <i data-icon="refresh" data-size="14"></i>
+                                <span>Change File</span>
+                            </button>
+                            <button type="button" class="btn btn-danger btn-sm btn-icon-only" title="Remove file" onclick="event.stopPropagation(); clearSelectedFile();" aria-label="Remove selected file">
+                                <i data-icon="x" data-size="14"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: var(--space-5); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);">
+                        <button type="button" class="btn btn-primary" id="btn-validate-upload" onclick="handlePreview('upload')">
+                            <i data-icon="search" data-size="16"></i>
+                            <span>Validate & Preview Specification</span>
+                        </button>
+                        <span style="font-size: 12px; color: var(--text-muted);">Parses endpoints, parameters & auth schemes with anti-SSRF protections</span>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Tab 2: Raw Spec Paste -->
+            <div id="tab-raw" class="import-tab-content" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label" for="raw_spec_text">OpenAPI Definition Payload (JSON or YAML)</label>
+                    <textarea id="raw_spec_text" class="form-textarea" placeholder='{"openapi": "3.0.0", "info": {"title": "Sample API", "version": "1.0.0"}, "paths": {...}}' style="min-height: 220px;"></textarea>
+                </div>
+                <div style="margin-top: var(--space-4); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--space-3);">
+                    <button type="button" class="btn btn-primary" onclick="handlePreview('raw')">
+                        <i data-icon="search" data-size="16"></i>
+                        <span>Validate & Preview Specification</span>
+                    </button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="loadSampleSpec()">
+                        <i data-icon="file-code" data-size="14"></i>
+                        <span>Load Sample OpenAPI 3.0</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab 3: Remote URL (SSRF Protected) -->
+            <div id="tab-url" class="import-tab-content" style="display: none;">
+                <div class="form-group">
+                    <label class="form-label" for="remote_spec_url">Remote Specification URL</label>
+                    <input type="url" id="remote_spec_url" class="form-input" placeholder="https://petstore.swagger.io/v2/swagger.json">
+                    <div style="font-size: 12px; color: var(--text-muted); margin-top: 6px; display: flex; align-items: center; gap: 6px;">
+                        <i data-icon="lock" data-size="14" data-color="var(--color-low)"></i>
+                        <span>SSRF Protected: Blocks private subnets (RFC1918), loopback, link-local, and cloud metadata.</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="handlePreview('url')">
+                    <i data-icon="search" data-size="16"></i>
+                    <span>Fetch, Validate & Preview</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Preview Results Section (Hidden until analyzed) -->
+    <div id="preview-section" class="card" style="display: none; border-color: var(--cyan-primary);">
+        <div class="card-header" style="background: var(--cyan-subtle);">
+            <div class="card-title" style="color: var(--cyan-primary);">
+                <i data-icon="check-circle" data-size="18" data-color="var(--cyan-primary)"></i>
+                <span>Specification Validation Preview</span>
+            </div>
+            <span id="preview-format-badge" class="badge badge-info">OpenAPI 3.0</span>
+        </div>
+
+        <div class="card-body">
+            <!-- Metadata Summary -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); margin-bottom: var(--space-6); background: var(--bg-secondary); padding: var(--space-4); border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                <div>
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">API Service Name</div>
+                    <div id="prev-title" style="font-size: 15px; font-weight: 700; color: #fff;">-</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Spec Version</div>
+                    <div id="prev-version" style="font-size: 14px; font-family: var(--font-code); color: var(--cyan-primary);">-</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Base URL / Host</div>
+                    <div id="prev-base-url" style="font-size: 13px; font-family: var(--font-code); color: var(--text-primary);">-</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px;">Discovered Endpoints</div>
+                    <div id="prev-endpoint-count" style="font-size: 15px; font-weight: 700; color: var(--color-low);">-</div>
+                </div>
+            </div>
+
+            <!-- Import Configurations -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-bottom: var(--space-6);">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="import-env">Deployment Environment</label>
+                    <select id="import-env" class="form-select">
+                        <option value="Production">Production (Live)</option>
+                        <option value="Staging">Staging (Pre-Release)</option>
+                        <option value="Development" selected>Development</option>
+                        <option value="Internal">Internal Microservice</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label class="form-label" for="import-owner">Owner / Engineering Team</label>
+                    <input type="text" id="import-owner" class="form-input" placeholder="e.g. Core SecOps, Payments Team" value="SecOps Team">
+                </div>
+            </div>
+
+            <!-- Parsed Endpoints Table -->
+            <h4 style="font-size: 14px; margin-bottom: var(--space-3); display: flex; align-items: center; gap: 6px;">
+                <i data-icon="api" data-size="16"></i>
+                <span>Discovered Endpoints & Attack Surface (<span id="prev-table-count">0</span>)</span>
+            </h4>
+            
+            <div class="table-container" style="max-height: 380px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Endpoint Path</th>
+                            <th>Summary</th>
+                            <th>Auth Protected</th>
+                            <th>Parameters</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-endpoints-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card-footer" style="display: flex; justify-content: flex-end; gap: var(--space-3);">
+            <button type="button" class="btn btn-secondary" onclick="document.getElementById('preview-section').style.display='none'">
+                <span>Cancel</span>
+            </button>
+            <button type="button" class="btn btn-primary" id="btn-commit-import" onclick="commitImport()">
+                <i data-icon="check" data-size="16"></i>
+                <span>Confirm & Import into Inventory</span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let currentSpecData = null;
+
+// Tab switcher
+document.querySelectorAll('.import-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.import-tab-btn').forEach(b => {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-secondary');
+        });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+
+        const tabId = btn.getAttribute('data-tab');
+        document.querySelectorAll('.import-tab-content').forEach(c => c.style.display = 'none');
+        document.getElementById(tabId).style.display = 'block';
+    });
+});
+
+// Drag and drop setup for file dropzone
+const dropzone = document.getElementById('dropzone-area');
+if (dropzone) {
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.add('dragover');
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropzone.addEventListener(eventName, (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            dropzone.classList.remove('dragover');
+        }, false);
+    });
+
+    dropzone.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        if (files && files.length > 0) {
+            document.getElementById('spec_file').files = files;
+            handleFileSelected(files);
+        }
+    });
+}
+
+function handleFileSelected(files) {
+    if (!files || files.length === 0) return;
+    const file = files[0];
+    
+    // Format size
+    let sizeStr = `${(file.size / 1024).toFixed(1)} KB`;
+    if (file.size > 1024 * 1024) {
+        sizeStr = `${(file.size / (1024 * 1024)).toFixed(2)} MB`;
+    }
+
+    document.getElementById('selected-file-name').textContent = file.name;
+    document.getElementById('selected-file-size').textContent = sizeStr;
+    
+    document.getElementById('dropzone-area').style.display = 'none';
+    document.getElementById('file-selected-card').style.display = 'flex';
+    
+    if (typeof renderAllIcons === 'function') renderAllIcons();
+}
+
+function clearSelectedFile() {
+    const fileInput = document.getElementById('spec_file');
+    fileInput.value = '';
+    document.getElementById('file-selected-card').style.display = 'none';
+    document.getElementById('dropzone-area').style.display = 'block';
+}
+
+function loadSampleSpec() {
+    const sample = {
+        "openapi": "3.0.0",
+        "info": {
+            "title": "Payment & Ledger Microservice",
+            "version": "2.4.0",
+            "description": "Production Payment Gateway API"
+        },
+        "servers": [{"url": "https://api.payments.enterprise.com/v2"}],
+        "paths": {
+            "/payments/{payment_id}": {
+                "get": {
+                    "summary": "Retrieve payment transaction details",
+                    "parameters": [{"name": "payment_id", "in": "path", "required": true, "schema": {"type": "string"}}],
+                    "responses": {"200": {"description": "Payment record"}}
+                }
+            },
+            "/payments/authorize": {
+                "post": {
+                    "summary": "Authorize credit card transaction",
+                    "requestBody": {"content": {"application/json": {"schema": {"type": "object"}}}},
+                    "responses": {"201": {"description": "Authorization successful"}}
+                }
+            },
+            "/admin/debug/users": {
+                "get": {
+                    "summary": "Internal memory dump and database config",
+                    "responses": {"200": {"description": "Internal logs"}}
+                }
+            }
+        }
+    };
+    document.getElementById('raw_spec_text').value = JSON.stringify(sample, null, 2);
+    showToast('Loaded sample OpenAPI 3.0 specification.', 'info');
+}
+
+async function handlePreview(type) {
+    let payload = null;
+    let isFormData = false;
+
+    if (type === 'upload') {
+        const fileInput = document.getElementById('spec_file');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            showToast('Please choose or drop a specification file to upload.', 'error');
+            return;
+        }
+        payload = new FormData();
+        payload.append('spec_file', fileInput.files[0]);
+        isFormData = true;
+    } else if (type === 'raw') {
+        const text = document.getElementById('raw_spec_text').value.trim();
+        if (!text) {
+            showToast('Please paste specification JSON or YAML.', 'error');
+            return;
+        }
+        payload = JSON.stringify({ source_type: 'raw_json', raw_spec: text });
+    } else if (type === 'url') {
+        const url = document.getElementById('remote_spec_url').value.trim();
+        if (!url) {
+            showToast('Please enter a remote URL.', 'error');
+            return;
+        }
+        payload = JSON.stringify({ source_type: 'remote_url', url: url });
+    }
+
+    try {
+        showToast('Validating specification with anti-SSRF checks...', 'info');
+        
+        const fetchOptions = {
+            method: 'POST',
+            body: payload
+        };
+        if (!isFormData) {
+            fetchOptions.headers = { 'Content-Type': 'application/json' };
+        }
+
+        const res = await fetch('/apis/preview', fetchOptions);
+        const data = await res.json();
+
+        if (!data.success) {
+            showToast(data.error || 'Validation failed.', 'error');
+            return;
+        }
+
+        currentSpecData = data;
+        renderPreview(data);
+        showToast('Specification parsed successfully!', 'success');
+
+    } catch (e) {
+        showToast(`Import Error: ${e.message}`, 'error');
+    }
+}
+
+function renderPreview(data) {
+    const prev = data.preview;
+    document.getElementById('preview-section').style.display = 'block';
+    document.getElementById('preview-format-badge').textContent = data.format ? `${prev.spec_format} (${data.format.toUpperCase()})` : prev.spec_format;
+    
+    document.getElementById('prev-title').textContent = prev.title;
+    document.getElementById('prev-version').textContent = prev.version;
+    document.getElementById('prev-base-url').textContent = prev.base_url;
+    document.getElementById('prev-endpoint-count').textContent = prev.total_endpoints;
+    document.getElementById('prev-table-count').textContent = prev.total_endpoints;
+
+    const tbody = document.getElementById('preview-endpoints-tbody');
+    tbody.innerHTML = prev.endpoints.map(ep => `
+        <tr>
+            <td><span class="badge badge-method method-${ep.method.toLowerCase()}">${ep.method}</span></td>
+            <td><code style="font-size: 12px; color: #fff;">${ep.path}</code></td>
+            <td style="font-size: 12px;">${ep.summary || '<span style="color: var(--text-muted);">-</span>'}</td>
+            <td><span class="badge ${ep.auth_required ? 'badge-low' : 'badge-critical'}">${ep.auth_required ? 'Required' : 'None'}</span></td>
+            <td style="font-size: 11px;">${ep.parameters ? ep.parameters.length : 0} params</td>
+        </tr>
+    `).join('');
+
+    if (typeof renderAllIcons === 'function') renderAllIcons();
+    document.getElementById('preview-section').scrollIntoView({ behavior: 'smooth' });
+}
+
+async function commitImport() {
+    if (!currentSpecData) return;
+
+    const commitBtn = document.getElementById('btn-commit-import');
+    commitBtn.disabled = true;
+    commitBtn.innerHTML = `<span>Importing API...</span>`;
+
+    const env = document.getElementById('import-env').value;
+    const owner = document.getElementById('import-owner').value.trim();
+
+    try {
+        const payload = {
+            raw_spec: currentSpecData.raw_spec,
+            source_type: currentSpecData.source_type,
+            name: currentSpecData.preview.title,
+            base_url: currentSpecData.preview.base_url,
+            environment: env,
+            owner: owner
+        };
+
+        const res = await apiRequest('/apis/import', {
+            method: 'POST',
+            body: JSON.stringify(payload)
+        });
+
+        if (res.success) {
+            showToast(res.message, 'success');
+            setTimeout(() => {
+                window.location.href = '/api-inventory';
+            }, 1200);
+        }
+    } catch (e) {
+        commitBtn.disabled = false;
+        commitBtn.innerHTML = `<i data-icon="check" data-size="16"></i><span>Confirm & Import into Inventory</span>`;
+        if (typeof renderAllIcons === 'function') renderAllIcons();
+    }
+}
+</script>
+{% endblock %}

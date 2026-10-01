@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Continuous Monitoring | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<i data-icon="monitoring" data-size="18" data-color="var(--cyan-primary)"></i>
+<span>Continuous API Security Monitoring</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Continuous Security Schedules</h1>
+        <p class="page-subtitle">Automate recurring security scans to detect regressions, newly exposed vectors, and schema violations.</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openCreateJobModal()">
+        <i data-icon="plus" data-size="14"></i>
+        <span>Create Schedule</span>
+    </button>
+</div>
+
+<!-- Jobs List Card -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i data-icon="monitoring" data-size="18" data-color="var(--cyan-primary)"></i>
+            <span>Active Monitoring Schedules (<span id="jobs-count-badge">0</span>)</span>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Job Name</th>
+                        <th>Target API</th>
+                        <th>Scan Profile</th>
+                        <th>Interval</th>
+                        <th>Last Executed</th>
+                        <th>Next Run</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="jobs-list-tbody">
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <div class="empty-desc">Loading monitoring schedules...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Create Job Modal -->
+<div id="create-job-modal" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i data-icon="monitoring" data-size="18" data-color="var(--cyan-primary)"></i>
+                <span>New Continuous Monitoring Schedule</span>
+            </h3>
+            <button type="button" class="btn btn-outline btn-sm btn-icon-only" data-close-modal="create-job-modal" aria-label="Close modal">
+                <i data-icon="x" data-size="16"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="create-job-form">
+                <div class="form-group">
+                    <label class="form-label" for="job-target-api">Target API Service</label>
+                    <select id="job-target-api" class="form-select" required></select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="job-name">Monitor Name</label>
+                    <input type="text" id="job-name" class="form-input" placeholder="e.g. Daily Production Security Probe">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="job-interval">Recurring Frequency</label>
+                    <select id="job-interval" class="form-select">
+                        <option value="60">Every 1 Hour (60m)</option>
+                        <option value="360">Every 6 Hours (360m)</option>
+                        <option value="720">Every 12 Hours (720m)</option>
+                        <option value="1440" selected>Daily (24 Hours / 1440m)</option>
+                        <option value="10080">Weekly (7 Days / 10080m)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="job-profile">Scan Profile</label>
+                    <select id="job-profile" class="form-select">
+                        <option value="standard">Standard Scan</option>
+                        <option value="safe">Safe Mode Scan</option>
+                        <option value="authenticated">Authenticated Scan</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal="create-job-modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitCreateJob()">
+                <i data-icon="check" data-size="16"></i>
+                <span>Save Schedule</span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadMonitoringJobs();
+    loadAPIsForJobModal();
+});
+
+async function loadMonitoringJobs() {
+    try {
+        const res = await apiRequest('/api/monitoring/jobs');
+        const tbody = document.getElementById('jobs-list-tbody');
+        document.getElementById('jobs-count-badge').textContent = res.count;
+
+        if (!res.jobs || res.jobs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <div class="empty-icon">
+                            <i data-icon="monitoring" data-size="32" data-color="var(--text-muted)"></i>
+                        </div>
+                        <div class="empty-title">No Continuous Monitors Configured</div>
+                        <div class="empty-desc">Automate continuous vulnerability testing on a recurring schedule.</div>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openCreateJobModal()">
+                            <i data-icon="plus" data-size="14"></i>
+                            <span>Configure First Monitor</span>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            renderAllIcons();
+            return;
+        }
+
+        tbody.innerHTML = res.jobs.map(j => `
+            <tr>
+                <td><strong style="color: #fff;">${j.name}</strong></td>
+                <td><strong style="color: var(--cyan-primary);">${j.api_name}</strong></td>
+                <td><span class="badge badge-info">${j.scan_profile}</span></td>
+                <td>Every ${j.interval_minutes >= 1440 ? `${j.interval_minutes / 1440} day(s)` : `${j.interval_minutes}m`}</td>
+                <td style="font-size: 11px; color: var(--text-muted);">${j.last_run_at ? j.last_run_at.substring(0, 19).replace('T', ' ') : 'Never'}</td>
+                <td style="font-size: 11px; color: var(--text-muted);">${j.next_run_at ? j.next_run_at.substring(0, 19).replace('T', ' ') : '-'}</td>
+                <td><span class="badge ${j.is_active ? 'badge-low' : 'badge-secondary'}">${j.is_active ? 'ACTIVE' : 'PAUSED'}</span></td>
+                <td>
+                    <div style="display: flex; gap: var(--space-2);">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="runJobNow('${j.id}')">
+                            <i data-icon="play" data-size="12"></i>
+                            <span>Run Now</span>
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="toggleJob('${j.id}')">
+                            <i data-icon="${j.is_active ? 'pause' : 'play'}" data-size="12"></i>
+                            <span>${j.is_active ? 'Pause' : 'Resume'}</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+        renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load monitoring jobs", e);
+    }
+}
+
+async function loadAPIsForJobModal() {
+    try {
+        const res = await apiRequest('/apis/list');
+        const select = document.getElementById('job-target-api');
+        select.innerHTML = '<option value="">-- Select API --</option>' + 
+            res.apis.map(a => `<option value="${a.id}">${a.name} (${a.environment})</option>`).join('');
+    } catch (e) {}
+}
+
+function openCreateJobModal() {
+    openModal('create-job-modal');
+}
+
+async function submitCreateJob() {
+    const apiId = document.getElementById('job-target-api').value;
+    const name = document.getElementById('job-name').value.trim();
+    const interval = document.getElementById('job-interval').value;
+    const profile = document.getElementById('job-profile').value;
+
+    if (!apiId) {
+        showToast('Please select a target API.', 'error');
+        return;
+    }
+
+    try {
+        const res = await apiRequest('/api/monitoring/jobs', {
+            method: 'POST',
+            body: JSON.stringify({
+                api_id: apiId,
+                name: name,
+                interval_minutes: parseInt(interval),
+                scan_profile: profile
+            })
+        });
+
+        if (res.success) {
+            closeModal('create-job-modal');
+            showToast('Monitoring schedule activated.', 'success');
+            loadMonitoringJobs();
+        }
+    } catch (e) {}
+}
+
+async function runJobNow(jobId) {
+    try {
+        showToast('Executing scheduled probe scan...', 'info');
+        const res = await apiRequest(`/api/monitoring/jobs/${jobId}/run-now`, { method: 'POST' });
+        if (res.success) {
+            showToast('Monitor execution complete! Scan logged.', 'success');
+            loadMonitoringJobs();
+        }
+    } catch (e) {}
+}
+
+async function toggleJob(jobId) {
+    try {
+        const res = await apiRequest(`/api/monitoring/jobs/${jobId}/toggle`, { method: 'POST' });
+        if (res.success) {
+            showToast(res.message, 'success');
+            loadMonitoringJobs();
+        }
+    } catch (e) {}
+}
+</script>
+{% endblock %}

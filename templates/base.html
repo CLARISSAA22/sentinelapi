@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}SentinelAPI | Production API Security & Risk Platform{% endblock %}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Stylesheets -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/components.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300e5ff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><path d='M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z'/><path d='m9 12 2 2 4-4'/></svg>">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% if current_user %}
+    <div class="app-container">
+        <!-- Unified Sidebar Navigation -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <div class="brand-icon">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#050816" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+                </div>
+                <div>
+                    <div class="brand-name">SentinelAPI</div>
+                    <div style="font-size: 10px; color: var(--cyan-primary); letter-spacing: 0.08em; font-weight: 700;">ENTERPRISE SOC</div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Overview</div>
+                <a href="{{ url_for('dashboard_page') }}" class="nav-item {% if active_page == 'dashboard' %}active{% endif %}">
+                    <i data-icon="dashboard" data-size="18"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <div class="nav-section-title">API Security</div>
+                <a href="{{ url_for('api.inventory_page') }}" class="nav-item {% if active_page == 'inventory' %}active{% endif %}">
+                    <i data-icon="api" data-size="18"></i>
+                    <span>API Inventory</span>
+                </a>
+                <a href="{{ url_for('api.import_page') }}" class="nav-item {% if active_page == 'import' %}active{% endif %}">
+                    <i data-icon="import" data-size="18"></i>
+                    <span>Import & Discovery</span>
+                </a>
+                <a href="{{ url_for('scan.scans_page') }}" class="nav-item {% if active_page == 'scans' %}active{% endif %}">
+                    <i data-icon="scan" data-size="18"></i>
+                    <span>Security Scans</span>
+                </a>
+                <a href="{{ url_for('scan.findings_page') }}" class="nav-item {% if active_page == 'findings' %}active{% endif %}">
+                    <i data-icon="findings" data-size="18"></i>
+                    <span>Findings & Risk</span>
+                </a>
+
+                <div class="nav-section-title">Analysis & Governance</div>
+                <a href="{{ url_for('api.drift_page') }}" class="nav-item {% if active_page == 'drift' %}active{% endif %}">
+                    <i data-icon="drift" data-size="18"></i>
+                    <span>API Drift</span>
+                </a>
+                <a href="{{ url_for('api.dependencies_page') }}" class="nav-item {% if active_page == 'dependencies' %}active{% endif %}">
+                    <i data-icon="dependencies" data-size="18"></i>
+                    <span>Dependencies</span>
+                </a>
+                <a href="{{ url_for('monitoring.monitoring_page') }}" class="nav-item {% if active_page == 'monitoring' %}active{% endif %}">
+                    <i data-icon="monitoring" data-size="18"></i>
+                    <span>Monitoring</span>
+                </a>
+                <a href="{{ url_for('report.reports_page') }}" class="nav-item {% if active_page == 'reports' %}active{% endif %}">
+                    <i data-icon="reports" data-size="18"></i>
+                    <span>Reports</span>
+                </a>
+
+                <div class="nav-section-title">Administration</div>
+                <a href="{{ url_for('settings.settings_page') }}" class="nav-item {% if active_page == 'settings' %}active{% endif %}">
+                    <i data-icon="settings" data-size="18"></i>
+                    <span>Settings & Team</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile-badge">
+                    <div class="avatar">{{ current_user.username[0]|upper }}</div>
+                    <div class="user-info">
+                        <div class="user-name">{{ current_user.username }}</div>
+                        <div class="user-role">{{ current_user.role }}</div>
+                    </div>
+                    <a href="{{ url_for('auth.logout') }}" title="Logout" aria-label="Logout" style="color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--radius-sm);">
+                        <i data-icon="logout" data-size="16"></i>
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <div class="app-main">
+            <header class="app-header">
+                <div class="header-title">
+                    {% block header_title %}
+                    <span>SentinelAPI Security Platform</span>
+                    {% endblock %}
+                </div>
+                <div class="header-actions">
+                    <span class="badge badge-low" style="font-size: 10px;">
+                        <i data-icon="check-circle" data-size="12" data-color="var(--color-low)"></i>
+                        <span>{{ platform_status }}</span>
+                    </span>
+                    <a href="{{ url_for('scan.scans_page') }}" class="btn btn-primary btn-sm">
+                        <i data-icon="plus" data-size="14"></i>
+                        <span>New Scan</span>
+                    </a>
+                </div>
+            </header>
+
+            <main class="content-wrapper">
+                {% block content %}
+                {% if error %}
+                <div class="card" style="border-color: var(--color-critical); padding: var(--space-6); text-align: center;">
+                    <div class="empty-icon" style="color: var(--color-critical);">
+                        <i data-icon="alert-circle" data-size="36" data-color="var(--color-critical)"></i>
+                    </div>
+                    <h2 style="color: var(--color-critical); margin-bottom: var(--space-2);">{{ error }}</h2>
+                    <p style="color: var(--text-secondary); margin-bottom: var(--space-4);">You do not have permission or the requested resource was not found.</p>
+                    <a href="{{ url_for('dashboard_page') }}" class="btn btn-secondary">
+                        <i data-icon="arrow-left" data-size="14"></i>
+                        <span>Return to Dashboard</span>
+                    </a>
+                </div>
+                {% endif %}
+                {% endblock %}
+            </main>
+        </div>
+    </div>
+    {% else %}
+    <!-- Public shell for Landing, Login, Register -->
+    <main>
+        {% block public_content %}{% endblock %}
+    </main>
+    {% endif %}
+
+    <div id="toast-container" class="toast-container"></div>
+
+    <script src="{{ url_for('static', filename='js/icons.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

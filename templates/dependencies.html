@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}API Dependencies | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<i data-icon="dependencies" data-size="18" data-color="var(--cyan-primary)"></i>
+<span>API Architecture & External Dependency Map</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Service & Integration Dependencies</h1>
+        <p class="page-subtitle">Map upstream and downstream integrations, third-party authentication services, and external microservice dependencies.</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i data-icon="dependencies" data-size="18" data-color="var(--cyan-primary)"></i>
+            <span>Active Dependency Inventory (<span id="dep-count-badge">0</span>)</span>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Host API</th>
+                        <th>Target Service / Provider</th>
+                        <th>Target URL</th>
+                        <th>Dependency Type</th>
+                        <th>Description</th>
+                        <th>Mapped On</th>
+                    </tr>
+                </thead>
+                <tbody id="dependencies-list-tbody">
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div class="empty-desc">Loading dependency matrix...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', loadDependencies);
+
+async function loadDependencies() {
+    try {
+        const res = await apiRequest('/apis/dependencies/graph');
+        const tbody = document.getElementById('dependencies-list-tbody');
+        document.getElementById('dep-count-badge').textContent = res.dependencies ? res.dependencies.length : 0;
+
+        if (!res.dependencies || res.dependencies.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-icon">
+                            <i data-icon="dependencies" data-size="32" data-color="var(--text-muted)"></i>
+                        </div>
+                        <div class="empty-title">No API Dependencies Mapped</div>
+                        <div class="empty-desc">No external third-party API dependencies or callbacks have been recorded for your current API services.</div>
+                    </td>
+                </tr>
+            `;
+            renderAllIcons();
+            return;
+        }
+
+        tbody.innerHTML = res.dependencies.map(d => `
+            <tr>
+                <td><strong style="color: #fff;">${d.api_id.substring(0, 8)}...</strong></td>
+                <td><span style="font-weight: 600; color: var(--cyan-primary);">${d.service_name}</span></td>
+                <td><code style="font-size: 11px;">${d.target_url || '-'}</code></td>
+                <td><span class="badge badge-info">${d.dependency_type}</span></td>
+                <td style="font-size: 12px; color: var(--text-secondary);">${d.description || '-'}</td>
+                <td style="font-size: 11px; color: var(--text-muted);">${d.created_at ? d.created_at.substring(0, 10) : '-'}</td>
+            </tr>
+        `).join('');
+
+        renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load dependencies", e);
+    }
+}
+</script>
+{% endblock %}

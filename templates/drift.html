@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}API Drift Detection | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<i data-icon="drift" data-size="18" data-color="var(--cyan-primary)"></i>
+<span>API Drift & Schema Variance Monitoring</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Specification Drift Timeline</h1>
+        <p class="page-subtitle">Track undocumented endpoints, removed routes, altered authentication parameters, and unapproved API modifications.</p>
+    </div>
+    <a href="{{ url_for('api.import_page') }}" class="btn btn-primary btn-sm">
+        <i data-icon="refresh" data-size="14"></i>
+        <span>Re-import Spec to Check Drift</span>
+    </a>
+</div>
+
+<!-- Drift Events Table -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i data-icon="drift" data-size="18" data-color="var(--cyan-primary)"></i>
+            <span>Detected Drift Events (<span id="drift-count-badge">0</span>)</span>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Target API</th>
+                        <th>Change Type</th>
+                        <th>Scope</th>
+                        <th>Endpoint / Method</th>
+                        <th>Change Description</th>
+                        <th>Detected At</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="drift-list-tbody">
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <div class="empty-desc">Loading API drift records...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', loadDriftEvents);
+
+async function loadDriftEvents() {
+    try {
+        const res = await apiRequest('/apis/drift/events');
+        const tbody = document.getElementById('drift-list-tbody');
+        document.getElementById('drift-count-badge').textContent = res.count;
+
+        if (!res.events || res.events.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <div class="empty-icon">
+                            <i data-icon="drift" data-size="32" data-color="var(--text-muted)"></i>
+                        </div>
+                        <div class="empty-title">No API Drift Detected</div>
+                        <div class="empty-desc">All tracked APIs match their recorded baselines. When a specification is re-imported with schema or endpoint changes, drift events will appear here.</div>
+                    </td>
+                </tr>
+            `;
+            renderAllIcons();
+            return;
+        }
+
+        tbody.innerHTML = res.events.map(d => `
+            <tr>
+                <td><strong style="color: #fff;">${d.api_name}</strong></td>
+                <td><span class="badge ${d.change_type === 'ENDPOINT_ADDED' ? 'badge-low' : (d.change_type === 'ENDPOINT_REMOVED' ? 'badge-critical' : 'badge-medium')}">${d.change_type}</span></td>
+                <td><span class="badge badge-secondary">${d.change_scope}</span></td>
+                <td><span class="badge badge-method method-${(d.method || 'get').toLowerCase()}">${d.method}</span> <code style="font-size: 11px;">${d.path}</code></td>
+                <td style="font-size: 12px; color: var(--text-primary); max-width: 280px;">${d.new_value || d.old_value || 'Schema altered'}</td>
+                <td style="font-size: 11px; color: var(--text-muted);">${d.detected_at ? d.detected_at.substring(0, 19).replace('T', ' ') : '-'}</td>
+                <td><span class="badge ${d.acknowledged ? 'badge-low' : 'badge-high'}">${d.acknowledged ? 'Acknowledged' : 'Pending Review'}</span></td>
+                <td>
+                    ${!d.acknowledged ? `<button type="button" class="btn btn-secondary btn-sm" onclick="ackDrift('${d.id}')"><i data-icon="check" data-size="12"></i><span>Acknowledge</span></button>` : '<span style="color: var(--text-muted); font-size: 11px; display: inline-flex; align-items: center; gap: 4px;"><i data-icon="check" data-size="12" data-color="var(--color-low)"></i> Reviewed</span>'}
+                </td>
+            </tr>
+        `).join('');
+
+        renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load drift", e);
+    }
+}
+
+async function ackDrift(driftId) {
+    try {
+        const res = await apiRequest(`/apis/drift/${driftId}/acknowledge`, { method: 'POST' });
+        if (res.success) {
+            showToast('Drift event acknowledged.', 'success');
+            loadDriftEvents();
+        }
+    } catch (e) {}
+}
+</script>
+{% endblock %}

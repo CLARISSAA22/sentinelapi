@@ -1,0 +1,219 @@
+{% extends "base.html" %}
+
+{% block title %}API Inventory | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<i data-icon="api" data-size="18" data-color="var(--cyan-primary)"></i>
+<span>API Asset Inventory & Attack Surface Catalog</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Registered API Services</h1>
+        <p class="page-subtitle">Real-time inventory of all tracked API services, endpoints, and authentication posture.</p>
+    </div>
+    <a href="{{ url_for('api.import_page') }}" class="btn btn-primary btn-sm">
+        <i data-icon="plus" data-size="14"></i>
+        <span>Import API Specification</span>
+    </a>
+</div>
+
+<!-- API Inventory Card -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i data-icon="api" data-size="18" data-color="var(--cyan-primary)"></i>
+            <span>Tracked Microservices & APIs (<span id="api-count-badge">0</span>)</span>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Service Name</th>
+                        <th>Version</th>
+                        <th>Environment</th>
+                        <th>Base URL</th>
+                        <th>Endpoints</th>
+                        <th>Owner</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="api-list-tbody">
+                    <tr>
+                        <td colspan="7" class="empty-state">
+                            <div class="empty-desc">Loading API asset inventory...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Endpoint Explorer Modal -->
+<div id="endpoint-explorer-modal" class="modal-backdrop">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <div>
+                <h3 class="modal-title" id="modal-api-name">
+                    <i data-icon="api" data-size="18" data-color="var(--cyan-primary)"></i>
+                    <span>API Endpoints</span>
+                </h3>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="modal-api-base-url"></div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm btn-icon-only" data-close-modal="endpoint-explorer-modal" aria-label="Close modal">
+                <i data-icon="x" data-size="16"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="padding: var(--space-4);">
+            <div class="table-container" style="max-height: 480px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Path</th>
+                            <th>Summary</th>
+                            <th>Auth Required</th>
+                            <th>Risk Status</th>
+                            <th>Last Tested</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modal-endpoints-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal="endpoint-explorer-modal">Close</button>
+            <button type="button" class="btn btn-primary" id="modal-run-scan-btn">
+                <i data-icon="scan" data-size="16"></i>
+                <span>Launch Security Scan</span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', loadAPIs);
+
+async function loadAPIs() {
+    try {
+        const res = await apiRequest('/apis/list');
+        const tbody = document.getElementById('api-list-tbody');
+        document.getElementById('api-count-badge').textContent = res.count;
+
+        if (!res.apis || res.apis.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" class="empty-state">
+                        <div class="empty-icon">
+                            <i data-icon="api" data-size="32" data-color="var(--text-muted)"></i>
+                        </div>
+                        <div class="empty-title">No APIs in Inventory</div>
+                        <div class="empty-desc">You have not registered or imported any API services yet. Upload an OpenAPI specification to build your inventory.</div>
+                        <a href="/api-import" class="btn btn-primary btn-sm">
+                            <i data-icon="plus" data-size="14"></i>
+                            <span>Import First API</span>
+                        </a>
+                    </td>
+                </tr>
+            `;
+            renderAllIcons();
+            return;
+        }
+
+        tbody.innerHTML = res.apis.map(a => `
+            <tr>
+                <td>
+                    <div style="font-weight: 600; color: #fff;">${a.name}</div>
+                    <div style="font-size: 11px; color: var(--text-muted);">Source: ${a.source_type}</div>
+                </td>
+                <td><span class="badge badge-info">v${a.version}</span></td>
+                <td><span class="badge ${a.environment === 'production' ? 'badge-critical' : 'badge-medium'}">${a.environment.toUpperCase()}</span></td>
+                <td><code style="font-size: 12px; color: var(--cyan-primary);">${a.base_url}</code></td>
+                <td><strong>${a.endpoint_count}</strong> endpoints</td>
+                <td><span style="font-size: 12px;">${a.owner}</span></td>
+                <td>
+                    <div style="display: flex; gap: var(--space-2);">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="viewEndpoints('${a.id}', '${a.name}', '${a.base_url}')">
+                            <i data-icon="search" data-size="12"></i>
+                            <span>Endpoints</span>
+                        </button>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="handleDeleteAPI('${a.id}', '${a.name}')" title="Delete API" aria-label="Delete API">
+                            <i data-icon="trash" data-size="12"></i>
+                            <span>Delete</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+
+        renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load APIs", e);
+    }
+}
+
+async function viewEndpoints(apiId, apiName, baseUrl) {
+    document.getElementById('modal-api-name').innerHTML = `
+        <i data-icon="api" data-size="18" data-color="var(--cyan-primary)"></i>
+        <span>${apiName} - Endpoint Catalog</span>
+    `;
+    document.getElementById('modal-api-base-url').textContent = baseUrl;
+    
+    document.getElementById('modal-run-scan-btn').onclick = () => {
+        window.location.href = `/scans?api_id=${apiId}`;
+    };
+
+    try {
+        const res = await apiRequest(`/apis/${apiId}`);
+        const tbody = document.getElementById('modal-endpoints-tbody');
+
+        tbody.innerHTML = res.endpoints.map(ep => {
+            let riskBadge = 'badge-info';
+            if (ep.risk_status === 'CRITICAL') riskBadge = 'badge-critical';
+            else if (ep.risk_status === 'HIGH') riskBadge = 'badge-high';
+            else if (ep.risk_status === 'MEDIUM') riskBadge = 'badge-medium';
+            else if (ep.risk_status === 'LOW' || ep.risk_status === 'SECURE') riskBadge = 'badge-low';
+
+            return `
+                <tr>
+                    <td><span class="badge badge-method method-${ep.method.toLowerCase()}">${ep.method}</span></td>
+                    <td><code style="font-size: 12px; color: #fff;">${ep.path}</code></td>
+                    <td style="font-size: 12px;">${ep.summary || '-'}</td>
+                    <td><span class="badge ${ep.auth_required ? 'badge-low' : 'badge-critical'}">${ep.auth_required ? 'Required' : 'None'}</span></td>
+                    <td><span class="badge ${riskBadge}">${ep.risk_status}</span></td>
+                    <td style="font-size: 11px; color: var(--text-muted);">${ep.last_tested_at ? ep.last_tested_at.substring(0, 19).replace('T', ' ') : 'Never'}</td>
+                </tr>
+            `;
+        }).join('');
+
+        openModal('endpoint-explorer-modal');
+        renderAllIcons();
+    } catch (e) {
+        showToast('Failed to load endpoint details.', 'error');
+    }
+}
+
+function handleDeleteAPI(apiId, apiName) {
+    confirmAction(
+        'Delete API Service?',
+        `Are you sure you want to permanently delete '${apiName}' and all associated scans, findings, and drift records? This action cannot be undone.`,
+        'Delete API Permanently',
+        async () => {
+            try {
+                const res = await apiRequest(`/apis/${apiId}`, { method: 'DELETE' });
+                if (res.success) {
+                    showToast(res.message, 'success');
+                    loadAPIs();
+                }
+            } catch (e) {}
+        }
+    );
+}
+</script>
+{% endblock %}

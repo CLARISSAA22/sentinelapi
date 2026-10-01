@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Settings & Audit Logs | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<span>Platform Settings, Team RBAC & Audit Logs</span>
+{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <h2 style="font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px;">Organization & Security Controls</h2>
+    <p style="color: var(--text-secondary); font-size: 13px;">Manage role-based access, system audit trails, and automated security integrations.</p>
+</div>
+
+<!-- Tabs -->
+<div style="display: flex; gap: 8px; border-bottom: 1px solid var(--border-color); padding-bottom: 16px; margin-bottom: 24px;">
+    <button type="button" class="btn btn-primary btn-sm settings-tab-btn" data-tab="tab-team">
+        <i data-icon="users" data-size="16"></i>
+        <span>Team & RBAC</span>
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm settings-tab-btn" data-tab="tab-audit">
+        <i data-icon="file-text" data-size="16"></i>
+        <span>System Audit Logs</span>
+    </button>
+    <button type="button" class="btn btn-secondary btn-sm settings-tab-btn" data-tab="tab-integrations">
+        <i data-icon="plug" data-size="16"></i>
+        <span>Ecosystem Integrations</span>
+    </button>
+</div>
+
+<!-- Tab 1: Team & Roles -->
+<div id="tab-team" class="settings-tab-content">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <i data-icon="users" data-size="18" data-color="var(--color-primary)"></i>
+                <span>Workspace Members & Roles</span>
+            </div>
+            <span class="badge badge-info">RBAC Managed</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Username</th>
+                            <th>Email Address</th>
+                            <th>Current Role</th>
+                            <th>Member Since</th>
+                            <th>Change Role</th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-list-tbody">
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <div class="empty-icon"><i data-icon="clock" data-size="32" data-color="var(--text-muted)"></i></div>
+                                <div class="empty-title">Loading Team Members</div>
+                                <div class="empty-desc">Fetching workspace directory and authorization roles...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab 2: Audit Logs -->
+<div id="tab-audit" class="settings-tab-content" style="display: none;">
+    <div class="card">
+        <div class="card-header">
+            <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                <i data-icon="file-text" data-size="18" data-color="var(--color-primary)"></i>
+                <span>Security Audit Log Trail</span>
+            </div>
+            <span class="badge badge-low">Tamper Evident</span>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Initiator</th>
+                            <th>Target Entity</th>
+                            <th>IP Address</th>
+                            <th>Timestamp (UTC)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="audit-list-tbody">
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <div class="empty-icon"><i data-icon="clock" data-size="32" data-color="var(--text-muted)"></i></div>
+                                <div class="empty-title">Loading Audit Records</div>
+                                <div class="empty-desc">Fetching historical platform audit entries...</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tab 3: Integrations -->
+<div id="tab-integrations" class="settings-tab-content" style="display: none;">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+        <!-- Jira -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                    <i data-icon="external-link" data-size="18" data-color="var(--color-info)"></i>
+                    <span>Jira Cloud Integration</span>
+                </div>
+                <span id="badge-jira" class="badge badge-secondary">Not configured</span>
+            </div>
+            <div class="card-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+                    Automatically file Jira vulnerability tickets from confirmed Critical/High security findings.
+                </p>
+                <div class="form-group">
+                    <label class="form-label" for="jira-url">Jira Instance URL</label>
+                    <input type="text" id="jira-url" class="form-input" placeholder="https://your-org.atlassian.net">
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="jira-key">API Token / Service Key</label>
+                    <input type="password" id="jira-key" class="form-input" placeholder="••••••••••••••••">
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveIntegration('jira')">
+                    <i data-icon="check" data-size="14"></i>
+                    <span>Save & Enable</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Slack -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                    <i data-icon="alert-circle" data-size="18" data-color="var(--color-medium)"></i>
+                    <span>Slack Notifications</span>
+                </div>
+                <span id="badge-slack" class="badge badge-secondary">Not configured</span>
+            </div>
+            <div class="card-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+                    Receive real-time security alerts and schema drift notifications in your SecOps Slack channel.
+                </p>
+                <div class="form-group">
+                    <label class="form-label" for="slack-webhook">Incoming Webhook URL</label>
+                    <input type="url" id="slack-webhook" class="form-input" placeholder="https://hooks.slack.com/services/...">
+                </div>
+                <div style="height: 16px;"></div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveIntegration('slack')">
+                    <i data-icon="check" data-size="14"></i>
+                    <span>Save & Enable</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- PagerDuty -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title" style="display: flex; align-items: center; gap: 8px;">
+                    <i data-icon="alert-triangle" data-size="18" data-color="var(--color-critical)"></i>
+                    <span>PagerDuty Incident Response</span>
+                </div>
+                <span id="badge-pagerduty" class="badge badge-secondary">Not configured</span>
+            </div>
+            <div class="card-body">
+                <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.5;">
+                    Trigger high-urgency on-call security incidents when Critical severity vulnerabilities are discovered.
+                </p>
+                <div class="form-group">
+                    <label class="form-label" for="pd-routing-key">Integration Routing Key</label>
+                    <input type="password" id="pd-routing-key" class="form-input" placeholder="••••••••••••••••">
+                </div>
+                <div style="height: 16px;"></div>
+                <button type="button" class="btn btn-primary btn-sm" onclick="saveIntegration('pagerduty')">
+                    <i data-icon="check" data-size="14"></i>
+                    <span>Save & Enable</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadUsers();
+    loadAuditLogs();
+    loadIntegrations();
+});
+
+// Tab switcher
+document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.settings-tab-btn').forEach(b => {
+            b.classList.remove('btn-primary');
+            b.classList.add('btn-secondary');
+        });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+
+        const tabId = btn.getAttribute('data-tab');
+        document.querySelectorAll('.settings-tab-content').forEach(c => c.style.display = 'none');
+        document.getElementById(tabId).style.display = 'block';
+    });
+});
+
+async function loadUsers() {
+    try {
+        const res = await apiRequest('/api/settings/users');
+        const tbody = document.getElementById('users-list-tbody');
+        if (!res.users || res.users.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="empty-state">
+                        <div class="empty-icon"><i data-icon="users" data-size="32" data-color="var(--text-muted)"></i></div>
+                        <div class="empty-title">No Users Found</div>
+                        <div class="empty-desc">No team members registered yet.</div>
+                    </td>
+                </tr>
+            `;
+            if (typeof renderAllIcons === 'function') renderAllIcons();
+            return;
+        }
+        tbody.innerHTML = res.users.map(u => `
+            <tr>
+                <td><strong style="color: #fff;">${u.username}</strong></td>
+                <td><span style="font-size: 12px; color: var(--text-secondary);">${u.email}</span></td>
+                <td><span class="badge ${u.role === 'Owner' || u.role === 'Administrator' ? 'badge-critical' : 'badge-info'}">${u.role}</span></td>
+                <td style="font-size: 11px; color: var(--text-muted);">${u.created_at ? u.created_at.substring(0, 10) : '-'}</td>
+                <td>
+                    <select class="form-select" style="width: 150px; padding: 6px 10px; font-size: 12px;" onchange="changeUserRole('${u.id}', this.value)">
+                        <option value="Security Analyst" ${u.role === 'Security Analyst' ? 'selected' : ''}>Security Analyst</option>
+                        <option value="Administrator" ${u.role === 'Administrator' ? 'selected' : ''}>Administrator</option>
+                        <option value="Viewer" ${u.role === 'Viewer' ? 'selected' : ''}>Viewer</option>
+                        <option value="Owner" ${u.role === 'Owner' ? 'selected' : ''}>Owner</option>
+                    </select>
+                </td>
+            </tr>
+        `).join('');
+        if (typeof renderAllIcons === 'function') renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load users:", e);
+    }
+}
+
+async function changeUserRole(userId, newRole) {
+    try {
+        const res = await apiRequest(`/api/settings/users/${userId}/role`, {
+            method: 'POST',
+            body: JSON.stringify({ role: newRole })
+        });
+        if (res.success) {
+            showToast(res.message, 'success');
+            loadUsers();
+        }
+    } catch (e) {
+        showToast('Failed to change role: ' + (e.message || 'Unknown error'), 'error');
+    }
+}
+
+async function loadAuditLogs() {
+    try {
+        const res = await apiRequest('/api/settings/audit-logs');
+        const tbody = document.getElementById('audit-list-tbody');
+        if (!res.logs || res.logs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="empty-state">
+                        <div class="empty-icon"><i data-icon="file-text" data-size="32" data-color="var(--text-muted)"></i></div>
+                        <div class="empty-title">No Audit Logs Recorded</div>
+                        <div class="empty-desc">Security audit events will be logged here in real-time.</div>
+                    </td>
+                </tr>
+            `;
+            if (typeof renderAllIcons === 'function') renderAllIcons();
+            return;
+        }
+        tbody.innerHTML = res.logs.map(l => `
+            <tr>
+                <td><span class="badge badge-info">${l.action}</span></td>
+                <td><strong style="color: #fff;">${l.username}</strong></td>
+                <td><code style="font-size: 11px;">${l.target_type}: ${l.target_id}</code></td>
+                <td><span style="font-family: var(--font-code); font-size: 11px; color: var(--color-primary);">${l.ip_address}</span></td>
+                <td style="font-size: 11px; color: var(--text-muted);">${l.created_at ? l.created_at.substring(0, 19).replace('T', ' ') : '-'}</td>
+            </tr>
+        `).join('');
+        if (typeof renderAllIcons === 'function') renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load audit logs:", e);
+        const tbody = document.getElementById('audit-list-tbody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="empty-state">
+                        <div class="empty-icon"><i data-icon="alert-triangle" data-size="32" data-color="var(--color-critical)"></i></div>
+                        <div class="empty-title">Failed to Retrieve Audit Logs</div>
+                        <div class="empty-desc">${e.message || 'Error communicating with audit service.'}</div>
+                    </td>
+                </tr>
+            `;
+            if (typeof renderAllIcons === 'function') renderAllIcons();
+        }
+    }
+}
+
+async function loadIntegrations() {
+    try {
+        const res = await apiRequest('/api/integrations/list');
+        res.integrations.forEach(ic => {
+            const badge = document.getElementById(`badge-${ic.service_name}`);
+            if (badge) {
+                if (ic.is_enabled) {
+                    badge.className = 'badge badge-low';
+                    badge.textContent = 'Active & Configured';
+                } else {
+                    badge.className = 'badge badge-secondary';
+                    badge.textContent = 'Not configured';
+                }
+            }
+        });
+    } catch (e) {
+        console.error("Failed to load integrations:", e);
+    }
+}
+
+async function saveIntegration(service) {
+    let cfg = {};
+    if (service === 'jira') {
+        cfg = { url: document.getElementById('jira-url').value, key: document.getElementById('jira-key').value };
+    } else if (service === 'slack') {
+        cfg = { webhook: document.getElementById('slack-webhook').value };
+    } else if (service === 'pagerduty') {
+        cfg = { routing_key: document.getElementById('pd-routing-key').value };
+    }
+
+    try {
+        const res = await apiRequest(`/api/integrations/${service}`, {
+            method: 'POST',
+            body: JSON.stringify({ is_enabled: true, config: cfg })
+        });
+        if (res.success) {
+            showToast(res.message, 'success');
+            loadIntegrations();
+        }
+    } catch (e) {
+        showToast('Failed to save integration: ' + (e.message || 'Unknown error'), 'error');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Vulnerability Findings | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<i data-icon="findings" data-size="18" data-color="var(--color-critical)"></i>
+<span>Vulnerability Findings & Risk Backlog</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Security Findings Hub</h1>
+        <p class="page-subtitle">Review detected weaknesses, inspect attack evidence traces, and track remediation lifecycles.</p>
+    </div>
+    <div style="display: flex; gap: var(--space-2);">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadFindings()">
+            <i data-icon="refresh" data-size="14"></i>
+            <span>Refresh</span>
+        </button>
+        <a href="{{ url_for('report.reports_page') }}" class="btn btn-primary btn-sm">
+            <i data-icon="reports" data-size="14"></i>
+            <span>Generate Report</span>
+        </a>
+    </div>
+</div>
+
+<!-- Filters Bar -->
+<div class="card" style="margin-bottom: var(--space-5);">
+    <div class="card-body" style="padding: var(--space-4) var(--space-5);">
+        <div style="display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 180px;">
+                <label class="form-label">Severity Filter</label>
+                <select id="filter-severity" class="form-select" onchange="loadFindings()">
+                    <option value="">All Severities</option>
+                    <option value="CRITICAL">Critical</option>
+                    <option value="HIGH">High</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="LOW">Low</option>
+                    <option value="INFORMATIONAL">Informational</option>
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label class="form-label">Lifecycle State</label>
+                <select id="filter-lifecycle" class="form-select" onchange="loadFindings()">
+                    <option value="">All States</option>
+                    <option value="New">New</option>
+                    <option value="Detected">Detected</option>
+                    <option value="Verified">Verified</option>
+                    <option value="Acknowledged">Acknowledged</option>
+                    <option value="Remediated">Remediated</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Reopened">Reopened (Regression)</option>
+                </select>
+            </div>
+
+            <div style="flex: 1; min-width: 180px;">
+                <label class="form-label">Verification Status</label>
+                <select id="filter-status" class="form-select" onchange="loadFindings()">
+                    <option value="">All Statuses</option>
+                    <option value="CONFIRMED">CONFIRMED</option>
+                    <option value="POTENTIAL">POTENTIAL</option>
+                    <option value="NOT_VULNERABLE">NOT VULNERABLE</option>
+                </select>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Findings Table -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i data-icon="findings" data-size="18" data-color="var(--color-critical)"></i>
+            <span>Identified Vulnerabilities (<span id="findings-count-badge">0</span>)</span>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Ref</th>
+                        <th>Vulnerability Title</th>
+                        <th>API Target</th>
+                        <th>Endpoint</th>
+                        <th>Severity</th>
+                        <th>CVSS</th>
+                        <th>Confidence</th>
+                        <th>Lifecycle</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="findings-list-tbody">
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <div class="empty-desc">Loading security findings from database...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', loadFindings);
+
+async function loadFindings() {
+    const sev = document.getElementById('filter-severity').value;
+    const life = document.getElementById('filter-lifecycle').value;
+    const status = document.getElementById('filter-status').value;
+
+    const params = new URLSearchParams();
+    if (sev) params.append('severity', sev);
+    if (life) params.append('lifecycle', life);
+    if (status) params.append('status', status);
+
+    try {
+        const res = await apiRequest(`/api/findings/list?${params.toString()}`);
+        const tbody = document.getElementById('findings-list-tbody');
+        document.getElementById('findings-count-badge').textContent = res.count || 0;
+
+        if (!res.findings || res.findings.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="empty-state">
+                        <div class="empty-icon">
+                            <i data-icon="shield-check" data-size="32" data-color="var(--color-low)"></i>
+                        </div>
+                        <div class="empty-title">No Security Findings Detected</div>
+                        <div class="empty-desc">No vulnerabilities match the current filter criteria or exist in the system. Run a security scan to analyze your APIs.</div>
+                        <a href="/scans" class="btn btn-primary btn-sm">
+                            <i data-icon="play" data-size="14"></i>
+                            <span>Launch Security Scan</span>
+                        </a>
+                    </td>
+                </tr>
+            `;
+            if (typeof renderAllIcons === 'function') renderAllIcons();
+            return;
+        }
+
+        tbody.innerHTML = res.findings.map(f => {
+            let badgeClass = 'badge-info';
+            let sevIcon = 'info';
+            if (f.severity === 'CRITICAL') { badgeClass = 'badge-critical'; sevIcon = 'alert-octagon'; }
+            else if (f.severity === 'HIGH') { badgeClass = 'badge-high'; sevIcon = 'alert-triangle'; }
+            else if (f.severity === 'MEDIUM') { badgeClass = 'badge-medium'; sevIcon = 'alert-circle'; }
+            else if (f.severity === 'LOW') { badgeClass = 'badge-low'; sevIcon = 'check-circle'; }
+
+            let lifeBadge = 'badge-info';
+            if (f.lifecycle_state === 'Resolved' || f.lifecycle_state === 'Remediated') lifeBadge = 'badge-low';
+            else if (f.lifecycle_state === 'Reopened') lifeBadge = 'badge-critical';
+            else if (f.lifecycle_state === 'Verified') lifeBadge = 'badge-medium';
+
+            const methodStr = f.method || 'GET';
+            return `
+                <tr>
+                    <td><code style="color: var(--cyan-primary); font-weight: 700;">${f.finding_ref}</code></td>
+                    <td>
+                        <a href="/findings/${f.id}" style="font-weight: 600; color: #fff;">${f.title}</a>
+                        <div style="font-size: 11px; color: var(--text-muted);">${f.category}</div>
+                    </td>
+                    <td><strong style="color: var(--text-secondary);">${f.api_name || 'API'}</strong></td>
+                    <td><span class="badge badge-method method-${methodStr.toLowerCase()}">${methodStr}</span> <code style="font-size: 11px;">${f.path || '-'}</code></td>
+                    <td>
+                        <span class="badge ${badgeClass}">
+                            <i data-icon="${sevIcon}" data-size="11"></i>
+                            <span>${f.severity}</span>
+                        </span>
+                    </td>
+                    <td><strong>${f.cvss_score}</strong></td>
+                    <td><span class="badge badge-secondary" style="font-size: 10px;">${f.confidence}</span></td>
+                    <td><span class="badge ${lifeBadge}">${f.lifecycle_state}</span></td>
+                    <td>
+                        <a href="/findings/${f.id}" class="btn btn-secondary btn-sm">
+                            <i data-icon="search" data-size="12"></i>
+                            <span>Investigate</span>
+                        </a>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        if (typeof renderAllIcons === 'function') renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load findings", e);
+    }
+}
+</script>
+{% endblock %}

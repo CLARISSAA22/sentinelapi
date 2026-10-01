@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Security Scans | SentinelAPI{% endblock %}
+
+{% block header_title %}
+<i data-icon="scan" data-size="18" data-color="var(--cyan-primary)"></i>
+<span>Security Scans & Assessment Orchestrator</span>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Security Assessments</h1>
+        <p class="page-subtitle">Execute modular vulnerability assessments across your API endpoints with false-positive verification.</p>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" onclick="openNewScanModal()">
+        <i data-icon="plus" data-size="14"></i>
+        <span>Launch Security Scan</span>
+    </button>
+</div>
+
+<!-- Scans History Table -->
+<div class="card">
+    <div class="card-header">
+        <div class="card-title">
+            <i data-icon="scan" data-size="18" data-color="var(--cyan-primary)"></i>
+            <span>Executed Security Assessments</span>
+        </div>
+    </div>
+    <div class="card-body" style="padding: 0;">
+        <div class="table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Scan Assessment</th>
+                        <th>Target API</th>
+                        <th>Profile</th>
+                        <th>Status</th>
+                        <th>Endpoints Tested</th>
+                        <th>Findings Generated</th>
+                        <th>Executed On</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="scans-list-tbody">
+                    <tr>
+                        <td colspan="8" class="empty-state">
+                            <div class="empty-desc">Loading security scan logs...</div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Launch Scan Modal -->
+<div id="new-scan-modal" class="modal-backdrop">
+    <div class="modal">
+        <div class="modal-header">
+            <h3 class="modal-title">
+                <i data-icon="scan" data-size="18" data-color="var(--cyan-primary)"></i>
+                <span>Launch API Security Scan</span>
+            </h3>
+            <button type="button" class="btn btn-outline btn-sm btn-icon-only" data-close-modal="new-scan-modal" aria-label="Close modal">
+                <i data-icon="x" data-size="16"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <form id="new-scan-form">
+                <div class="form-group">
+                    <label class="form-label" for="scan-target-api">Target API Service</label>
+                    <select id="scan-target-api" class="form-select" required>
+                        <option value="">-- Select Target API --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="scan-name">Assessment Name</label>
+                    <input type="text" id="scan-name" class="form-input" placeholder="e.g. Q4 Security Audit">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="scan-profile">Testing Profile</label>
+                    <select id="scan-profile" class="form-select">
+                        <option value="standard">Standard Scan (OWASP Top 10, Injection, Auth & Headers)</option>
+                        <option value="safe">Safe Mode Scan (Read-only, Non-destructive checks only)</option>
+                        <option value="authenticated">Authenticated Scan (Includes Token & Role Verification)</option>
+                        <option value="advanced">Advanced Aggressive Scan (Full fuzzing & deep mutation)</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal="new-scan-modal">Cancel</button>
+            <button type="button" class="btn btn-primary" id="btn-start-scan" onclick="startScan()">
+                <i data-icon="play" data-size="14"></i>
+                <span>Begin Security Scan</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Scan Execution Details Modal -->
+<div id="scan-details-modal" class="modal-backdrop">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <div>
+                <h3 class="modal-title" id="scan-modal-title">
+                    <i data-icon="scan" data-size="18" data-color="var(--cyan-primary)"></i>
+                    <span>Scan Assessment Details</span>
+                </h3>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;" id="scan-modal-sub"></div>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm btn-icon-only" data-close-modal="scan-details-modal" aria-label="Close modal">
+                <i data-icon="x" data-size="16"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <h4 style="font-size: 14px; margin-bottom: var(--space-3); display: flex; align-items: center; gap: 6px;">
+                <i data-icon="monitoring" data-size="16"></i>
+                <span>Test Execution Trace & Checks Run</span>
+            </h4>
+            <div class="table-container" style="max-height: 350px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Check Name</th>
+                            <th>Category</th>
+                            <th>Endpoint</th>
+                            <th>Status</th>
+                            <th>Latency</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scan-tests-tbody"></tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal="scan-details-modal">Close</button>
+            <a href="{{ url_for('scan.findings_page') }}" class="btn btn-primary">
+                <span>View Generated Findings</span>
+                <i data-icon="arrow-right" data-size="14"></i>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    loadScans();
+    loadAPIListForModal();
+});
+
+async function loadScans() {
+    try {
+        const res = await apiRequest('/api/scans/list');
+        const tbody = document.getElementById('scans-list-tbody');
+
+        if (!res.scans || res.scans.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <div class="empty-icon">
+                            <i data-icon="scan" data-size="32" data-color="var(--text-muted)"></i>
+                        </div>
+                        <div class="empty-title">No Scans Recorded</div>
+                        <div class="empty-desc">No security assessments have been executed yet. Launch a scan against an imported API to discover vulnerabilities.</div>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openNewScanModal()">
+                            <i data-icon="play" data-size="14"></i>
+                            <span>Launch First Scan</span>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            renderAllIcons();
+            return;
+        }
+
+        tbody.innerHTML = res.scans.map(s => `
+            <tr>
+                <td>
+                    <div style="font-weight: 600; color: #fff;">${s.name}</div>
+                    <div style="font-size: 11px; color: var(--text-muted); font-family: var(--font-code);">${s.id.substring(0, 13)}...</div>
+                </td>
+                <td><strong style="color: var(--cyan-primary);">${s.api_name}</strong></td>
+                <td><span class="badge badge-info">${s.scan_profile}</span></td>
+                <td><span class="badge ${s.status === 'completed' ? 'badge-low' : (s.status === 'failed' ? 'badge-critical' : 'badge-medium')}">${s.status.toUpperCase()}</span></td>
+                <td>${s.tested_endpoints} / ${s.total_endpoints}</td>
+                <td><span class="badge ${s.findings_count > 0 ? 'badge-critical' : 'badge-low'}">${s.findings_count} findings</span></td>
+                <td style="font-size: 12px; color: var(--text-muted);">${s.created_at ? s.created_at.substring(0, 19).replace('T', ' ') : '-'}</td>
+                <td>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="viewScanDetails('${s.id}')">
+                        <i data-icon="search" data-size="12"></i>
+                        <span>Inspect</span>
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+
+        renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load scans", e);
+    }
+}
+
+async function loadAPIListForModal() {
+    try {
+        const res = await apiRequest('/apis/list');
+        const select = document.getElementById('scan-target-api');
+        select.innerHTML = '<option value="">-- Select Target API --</option>' + 
+            res.apis.map(a => `<option value="${a.id}">${a.name} (${a.environment}) - ${a.endpoint_count} endpoints</option>`).join('');
+    } catch (e) {}
+}
+
+function openNewScanModal() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetApiId = urlParams.get('api_id');
+    if (targetApiId) {
+        const select = document.getElementById('scan-target-api');
+        select.value = targetApiId;
+    }
+    openModal('new-scan-modal');
+}
+
+async function startScan() {
+    const apiId = document.getElementById('scan-target-api').value;
+    const name = document.getElementById('scan-name').value.trim();
+    const profile = document.getElementById('scan-profile').value;
+
+    if (!apiId) {
+        showToast('Please select a target API.', 'error');
+        return;
+    }
+
+    const startBtn = document.getElementById('btn-start-scan');
+    startBtn.disabled = true;
+    startBtn.innerHTML = `<span>Executing Checks...</span>`;
+
+    try {
+        const res = await apiRequest('/api/scans/create', {
+            method: 'POST',
+            body: JSON.stringify({
+                api_id: apiId,
+                name: name,
+                profile: profile
+            })
+        });
+
+        if (res.success) {
+            closeModal('new-scan-modal');
+            showToast('Scan execution completed successfully!', 'success');
+            loadScans();
+            viewScanDetails(res.scan.id);
+        }
+    } catch (e) {
+        // error handled
+    } finally {
+        startBtn.disabled = false;
+        startBtn.innerHTML = `<i data-icon="play" data-size="14"></i><span>Begin Security Scan</span>`;
+        renderAllIcons();
+    }
+}
+
+async function viewScanDetails(scanId) {
+    try {
+        const res = await apiRequest(`/api/scans/${scanId}`);
+        const s = res.scan;
+        document.getElementById('scan-modal-title').innerHTML = `
+            <i data-icon="scan" data-size="18" data-color="var(--cyan-primary)"></i>
+            <span>${s.name} - Trace Matrix</span>
+        `;
+        document.getElementById('scan-modal-sub').textContent = `Target: ${s.api_name} | Profile: ${s.scan_profile} | Status: ${s.status.toUpperCase()} | Generated Findings: ${s.findings_count}`;
+
+        const tbody = document.getElementById('scan-tests-tbody');
+        if (!res.tests || res.tests.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><div class="empty-desc">No test traces recorded.</div></td></tr>`;
+        } else {
+            tbody.innerHTML = res.tests.map(t => `
+                <tr>
+                    <td><strong style="color: #fff;">${t.check_name}</strong><br><code style="font-size: 10px; color: var(--text-muted);">${t.check_id}</code></td>
+                    <td><span class="badge badge-info">${t.category}</span></td>
+                    <td><span class="badge badge-method method-${(t.endpoint_method || 'get').toLowerCase()}">${t.endpoint_method}</span> <code style="font-size: 11px;">${t.endpoint_path}</code></td>
+                    <td><span class="badge ${t.status === 'executed' ? 'badge-low' : 'badge-critical'}">${t.status}</span></td>
+                    <td style="font-size: 11px; font-family: var(--font-code);">${t.duration_ms}ms</td>
+                    <td style="font-size: 11px; color: var(--text-secondary); max-width: 250px;">${t.details || '-'}</td>
+                </tr>
+            `).join('');
+        }
+
+        openModal('scan-details-modal');
+        renderAllIcons();
+    } catch (e) {}
+}
+</script>
+{% endblock %}

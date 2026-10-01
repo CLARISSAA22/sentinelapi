@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | SentinelAPI Security Platform{% endblock %}
+
+{% block header_title %}
+<i data-icon="dashboard" data-size="18" data-color="var(--cyan-primary)"></i>
+<span>Executive API Security Posture Dashboard</span>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<div class="page-header">
+    <div>
+        <h1 class="page-title">Executive Security Posture</h1>
+        <p class="page-subtitle">Real-time attack surface posture, risk metrics, and vulnerability telemetry.</p>
+    </div>
+    <div style="display: flex; gap: var(--space-3);">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="loadDashboardStats()">
+            <i data-icon="refresh" data-size="14"></i>
+            <span>Refresh Telemetry</span>
+        </button>
+        <a href="{{ url_for('api.import_page') }}" class="btn btn-primary btn-sm">
+            <i data-icon="import" data-size="14"></i>
+            <span>Import API Spec</span>
+        </a>
+    </div>
+</div>
+
+<!-- Metrics Summary Grid -->
+<div class="metrics-grid">
+    <div class="stat-card">
+        <div class="stat-header">
+            <span class="stat-title">Tracked APIs</span>
+            <i data-icon="api" data-size="20" data-color="var(--cyan-primary)"></i>
+        </div>
+        <div class="stat-value" id="stat-apis">0</div>
+        <div class="stat-meta">
+            <i data-icon="layers" data-size="14"></i>
+            <span><strong id="stat-endpoints">0</strong> Total Endpoints</span>
+        </div>
+    </div>
+
+    <div class="stat-card stat-critical">
+        <div class="stat-header">
+            <span class="stat-title">Active Findings</span>
+            <i data-icon="findings" data-size="20" data-color="var(--color-critical)"></i>
+        </div>
+        <div class="stat-value" id="stat-findings" style="color: var(--color-critical);">0</div>
+        <div class="stat-meta">
+            <span style="color: var(--color-critical); font-weight: 700;" id="stat-critical">0</span> Critical &bull; <span style="color: var(--color-high); font-weight: 700;" id="stat-high">0</span> High
+        </div>
+    </div>
+
+    <div class="stat-card stat-warning">
+        <div class="stat-header">
+            <span class="stat-title">Posture Grade</span>
+            <i data-icon="shield-check" data-size="20" data-color="var(--cyan-primary)"></i>
+        </div>
+        <div class="stat-value" id="stat-grade" style="color: var(--cyan-primary);">-</div>
+        <div class="stat-meta">
+            <span>Score: <strong id="stat-score">-</strong>/100 &bull; <span id="stat-status">-</span></span>
+        </div>
+    </div>
+
+    <div class="stat-card stat-success">
+        <div class="stat-header">
+            <span class="stat-title">Tested Endpoints</span>
+            <i data-icon="scan" data-size="20" data-color="var(--color-low)"></i>
+        </div>
+        <div class="stat-value" id="stat-tested">0</div>
+        <div class="stat-meta">
+            <i data-icon="alert-circle" data-size="14"></i>
+            <span><strong id="stat-unscanned">0</strong> Unscanned Endpoints</span>
+        </div>
+    </div>
+</div>
+
+<!-- Main Split Layout -->
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-6);">
+    <!-- Recent Scans & Findings Column -->
+    <div>
+        <!-- Recent Security Scans -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="scan" data-size="18" data-color="var(--cyan-primary)"></i>
+                    <span>Recent Security Scans</span>
+                </div>
+                <a href="{{ url_for('scan.scans_page') }}" class="btn btn-secondary btn-sm">
+                    <span>View All Scans</span>
+                    <i data-icon="arrow-right" data-size="14"></i>
+                </a>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Scan Assessment</th>
+                                <th>Profile</th>
+                                <th>Status</th>
+                                <th>Coverage</th>
+                                <th>Findings</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-scans-tbody">
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <div class="empty-desc">Loading security scan activity...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Top Critical / High Findings -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="findings" data-size="18" data-color="var(--color-critical)"></i>
+                    <span>Open Security Findings</span>
+                </div>
+                <a href="{{ url_for('scan.findings_page') }}" class="btn btn-secondary btn-sm">
+                    <span>All Findings</span>
+                    <i data-icon="arrow-right" data-size="14"></i>
+                </a>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Ref</th>
+                                <th>Vulnerability Title</th>
+                                <th>Endpoint</th>
+                                <th>Severity</th>
+                                <th>CVSS</th>
+                                <th>State</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recent-findings-tbody">
+                            <tr>
+                                <td colspan="6" class="empty-state">
+                                    <div class="empty-desc">Loading open findings...</div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Severity Breakdown & Drift Alerts -->
+    <div>
+        <!-- Finding Distribution -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="monitoring" data-size="18" data-color="var(--purple-primary)"></i>
+                    <span>Severity Distribution</span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="display: flex; flex-direction: column; gap: var(--space-4);">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                            <span style="color: var(--color-critical); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                <i data-icon="alert-octagon" data-size="12" data-color="var(--color-critical)"></i> CRITICAL
+                            </span>
+                            <span id="count-critical" style="font-weight: 700;">0</span>
+                        </div>
+                        <div style="height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
+                            <div id="bar-critical" style="height: 100%; width: 0%; background: var(--color-critical); transition: width 0.5s ease;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                            <span style="color: var(--color-high); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                <i data-icon="alert-triangle" data-size="12" data-color="var(--color-high)"></i> HIGH
+                            </span>
+                            <span id="count-high" style="font-weight: 700;">0</span>
+                        </div>
+                        <div style="height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
+                            <div id="bar-high" style="height: 100%; width: 0%; background: var(--color-high); transition: width 0.5s ease;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                            <span style="color: var(--color-medium); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                <i data-icon="alert-circle" data-size="12" data-color="var(--color-medium)"></i> MEDIUM
+                            </span>
+                            <span id="count-medium" style="font-weight: 700;">0</span>
+                        </div>
+                        <div style="height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
+                            <div id="bar-medium" style="height: 100%; width: 0%; background: var(--color-medium); transition: width 0.5s ease;"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 6px;">
+                            <span style="color: var(--color-low); font-weight: 600; display: inline-flex; align-items: center; gap: 4px;">
+                                <i data-icon="check-circle" data-size="12" data-color="var(--color-low)"></i> LOW
+                            </span>
+                            <span id="count-low" style="font-weight: 700;">0</span>
+                        </div>
+                        <div style="height: 6px; background: rgba(255,255,255,0.06); border-radius: 3px; overflow: hidden;">
+                            <div id="bar-low" style="height: 100%; width: 0%; background: var(--color-low); transition: width 0.5s ease;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent API Drift Alerts -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <i data-icon="drift" data-size="18" data-color="var(--cyan-primary)"></i>
+                    <span>API Drift Alerts</span>
+                </div>
+                <a href="{{ url_for('api.drift_page') }}" class="btn btn-secondary btn-sm">
+                    <span>Drift Hub</span>
+                </a>
+            </div>
+            <div class="card-body" id="drift-alerts-container" style="padding: var(--space-4);">
+                <div class="empty-state" style="padding: var(--space-5);">
+                    <div class="empty-desc">No unresolved API drift events detected.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', loadDashboardStats);
+
+async function loadDashboardStats() {
+    try {
+        const res = await apiRequest('/api/dashboard/stats');
+        if (!res.success) return;
+
+        const m = res.metrics;
+        document.getElementById('stat-apis').textContent = m.total_apis;
+        document.getElementById('stat-endpoints').textContent = m.total_endpoints;
+        document.getElementById('stat-findings').textContent = m.active_findings;
+        document.getElementById('stat-critical').textContent = m.severity_counts.CRITICAL || 0;
+        document.getElementById('stat-high').textContent = m.severity_counts.HIGH || 0;
+        document.getElementById('stat-grade').textContent = m.posture_grade;
+        document.getElementById('stat-score').textContent = m.posture_score;
+        document.getElementById('stat-status').textContent = m.posture_status;
+        document.getElementById('stat-tested').textContent = m.tested_endpoints;
+        document.getElementById('stat-unscanned').textContent = m.unscanned_endpoints;
+
+        // Breakdown bars
+        const total = m.active_findings || 1;
+        document.getElementById('count-critical').textContent = m.severity_counts.CRITICAL || 0;
+        document.getElementById('count-high').textContent = m.severity_counts.HIGH || 0;
+        document.getElementById('count-medium').textContent = m.severity_counts.MEDIUM || 0;
+        document.getElementById('count-low').textContent = m.severity_counts.LOW || 0;
+
+        document.getElementById('bar-critical').style.width = `${((m.severity_counts.CRITICAL || 0) / total) * 100}%`;
+        document.getElementById('bar-high').style.width = `${((m.severity_counts.HIGH || 0) / total) * 100}%`;
+        document.getElementById('bar-medium').style.width = `${((m.severity_counts.MEDIUM || 0) / total) * 100}%`;
+        document.getElementById('bar-low').style.width = `${((m.severity_counts.LOW || 0) / total) * 100}%`;
+
+        // Render Recent Scans
+        const scansTbody = document.getElementById('recent-scans-tbody');
+        if (res.recent_scans && res.recent_scans.length > 0) {
+            scansTbody.innerHTML = res.recent_scans.map(s => `
+                <tr>
+                    <td>
+                        <div style="font-weight: 600; color: #fff;">${s.name}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">${s.api_name}</div>
+                    </td>
+                    <td><span class="badge badge-info">${s.scan_profile}</span></td>
+                    <td><span class="badge ${s.status === 'completed' ? 'badge-low' : (s.status === 'failed' ? 'badge-critical' : 'badge-medium')}">${s.status}</span></td>
+                    <td>${s.tested_endpoints} / ${s.total_endpoints}</td>
+                    <td><span class="badge ${s.findings_count > 0 ? 'badge-critical' : 'badge-low'}">${s.findings_count}</span></td>
+                    <td>
+                        <a href="/scans" class="btn btn-secondary btn-sm">
+                            <i data-icon="search" data-size="12"></i>
+                            <span>Inspect</span>
+                        </a>
+                    </td>
+                </tr>
+            `).join('');
+        } else {
+            scansTbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-icon">
+                            <i data-icon="scan" data-size="32" data-color="var(--text-muted)"></i>
+                        </div>
+                        <div class="empty-title">No Security Scans Executed</div>
+                        <div class="empty-desc">Import an API and launch your first security scan to analyze vulnerabilities.</div>
+                        <a href="/api-import" class="btn btn-primary btn-sm">
+                            <i data-icon="plus" data-size="14"></i>
+                            <span>Import API First</span>
+                        </a>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Render Recent Findings
+        const findingsTbody = document.getElementById('recent-findings-tbody');
+        if (res.recent_findings && res.recent_findings.length > 0) {
+            findingsTbody.innerHTML = res.recent_findings.map(f => {
+                let badgeClass = 'badge-info';
+                if (f.severity === 'CRITICAL') badgeClass = 'badge-critical';
+                else if (f.severity === 'HIGH') badgeClass = 'badge-high';
+                else if (f.severity === 'MEDIUM') badgeClass = 'badge-medium';
+                else if (f.severity === 'LOW') badgeClass = 'badge-low';
+
+                return `
+                    <tr>
+                        <td><code style="color: var(--cyan-primary);">${f.finding_ref}</code></td>
+                        <td>
+                            <a href="/findings/${f.id}" style="font-weight: 600; color: var(--text-primary);">${f.title}</a>
+                            <div style="font-size: 11px; color: var(--text-muted);">${f.category}</div>
+                        </td>
+                        <td><span class="badge badge-method method-${(f.method || 'get').toLowerCase()}">${f.method}</span> <code style="font-size: 11px;">${f.path}</code></td>
+                        <td><span class="badge ${badgeClass}">${f.severity}</span></td>
+                        <td><strong>${f.cvss_score}</strong></td>
+                        <td><span class="badge badge-secondary">${f.lifecycle_state}</span></td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            findingsTbody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="empty-state">
+                        <div class="empty-icon">
+                            <i data-icon="shield-check" data-size="32" data-color="var(--color-low)"></i>
+                        </div>
+                        <div class="empty-title">Zero Active Findings</div>
+                        <div class="empty-desc">No security weaknesses recorded yet across your inventory.</div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // Render Drift Alerts
+        const driftContainer = document.getElementById('drift-alerts-container');
+        if (res.recent_drifts && res.recent_drifts.length > 0) {
+            driftContainer.innerHTML = res.recent_drifts.map(d => `
+                <div style="padding: 10px; border-bottom: 1px solid var(--border-color); font-size: 12px;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
+                        <span class="badge badge-medium">${d.change_type}</span>
+                        <span style="color: var(--text-muted); font-size: 11px;">${d.detected_at.substring(0, 10)}</span>
+                    </div>
+                    <div style="color: #fff; font-weight: 500;">${d.api_name}: ${d.method} ${d.path}</div>
+                </div>
+            `).join('');
+        } else {
+            driftContainer.innerHTML = `
+                <div class="empty-state" style="padding: var(--space-5);">
+                    <div class="empty-desc">No API drift detected between specification versions.</div>
+                </div>
+            `;
+        }
+
+        renderAllIcons();
+    } catch (e) {
+        console.error("Failed to load dashboard metrics", e);
+    }
+}
+</script>
+{% endblock %}
