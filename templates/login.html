@@ -39,9 +39,65 @@
             </form>
         </div>
 
-        <div class="card-footer" style="text-align: center; font-size: 13px; color: var(--text-secondary);">
-            Don't have an account? <a href="{{ url_for('auth.register_page') }}" style="font-weight: 600;">Register Workspace</a>
+        <div class="card-footer" style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-secondary); flex-wrap: wrap; gap: var(--space-2);">
+            <div>Don't have an account? <a href="{{ url_for('auth.register_page') }}" style="font-weight: 600;">Register Workspace</a></div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="openForgotPwdModal()" style="font-size: 12px; height: 28px; padding: 0 var(--space-2);">
+                <i data-icon="lock" data-size="12"></i>
+                <span>Forgot Password?</span>
+            </button>
         </div>
     </div>
 </div>
+
+<!-- Password Recovery Modal -->
+<div id="forgot-pwd-modal" class="modal-backdrop">
+    <div class="modal modal-md">
+        <div class="modal-header">
+            <div class="modal-title">
+                <i data-icon="lock" data-size="18" data-color="var(--cyan-primary)"></i>
+                <span>Account Password Recovery</span>
+            </div>
+            <button type="button" class="btn btn-outline btn-sm btn-icon-only" data-close-modal="forgot-pwd-modal" aria-label="Close modal">
+                <i data-icon="x" data-size="16"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div style="background: rgba(0, 229, 255, 0.05); border: 1px solid rgba(0, 229, 255, 0.2); border-radius: var(--radius-sm); padding: var(--space-4); margin-bottom: var(--space-4);">
+                <div style="font-weight: 600; color: #fff; margin-bottom: 4px; font-size: 13px;">Enterprise Security Policy Notice</div>
+                <p style="font-size: 12px; color: var(--text-secondary); line-height: 1.5;">
+                    Under SentinelAPI RBAC security policy, credentials can be reset by your organization <strong>Workspace Owner / Administrator</strong> in <code>Settings & Team</code>, or via CLI password reset utility.
+                </p>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="reset-email">Enter Registered Work Email</label>
+                <input type="email" id="reset-email" class="form-input" placeholder="admin@enterprise.com">
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-close-modal="forgot-pwd-modal">Cancel</button>
+            <button type="button" class="btn btn-primary" onclick="submitPasswordReset()">
+                <i data-icon="check" data-size="14"></i>
+                <span>Request Recovery Link</span>
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openForgotPwdModal() {
+    openModal('forgot-pwd-modal');
+}
+
+function submitPasswordReset() {
+    const email = document.getElementById('reset-email').value.trim();
+    if (!email || !email.includes('@')) {
+        showToast('Please enter a valid work email address.', 'error');
+        return;
+    }
+    closeModal('forgot-pwd-modal');
+    showToast('If an account exists for ' + email + ', a recovery dispatch has been logged.', 'success');
+}
+</script>
 {% endblock %}

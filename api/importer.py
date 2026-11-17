@@ -68,6 +68,18 @@ class OpenAPIImporter:
         method_counts = {'GET': 0, 'POST': 0, 'PUT': 0, 'DELETE': 0, 'PATCH': 0, 'OPTIONS': 0, 'HEAD': 0, 'OTHER': 0}
         dependencies = []
 
+        # Check for explicit dependency declarations in x-dependencies or dependencies
+        raw_deps = spec_dict.get('x-dependencies') or spec_dict.get('dependencies') or info.get('x-dependencies') or []
+        if isinstance(raw_deps, list):
+            for d in raw_deps:
+                if isinstance(d, dict):
+                    dependencies.append({
+                        'service_name': d.get('service_name') or d.get('name') or 'External Dependency',
+                        'target_url': d.get('target_url') or d.get('url') or '',
+                        'dependency_type': d.get('dependency_type') or d.get('type') or 'Third-Party Integration',
+                        'description': d.get('description', '')
+                    })
+
         # Check for external docs or callbacks that indicate external dependencies
         if 'externalDocs' in spec_dict and isinstance(spec_dict['externalDocs'], dict):
             doc_url = spec_dict['externalDocs'].get('url')

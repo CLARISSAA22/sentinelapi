@@ -90,7 +90,7 @@ def list_team_users():
 
 @settings_bp.route('/api/settings/users/<user_id>/role', methods=['POST'])
 @login_required
-@role_required(['Owner', 'Administrator'])
+@role_required(['Owner'])
 def update_user_role(user_id):
     data = request.get_json() or {}
     new_role = data.get('role')

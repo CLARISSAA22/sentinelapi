@@ -17,6 +17,11 @@ def create_app(config_name=None):
     # Initialize Database
     init_db(app.config['SQLALCHEMY_DATABASE_URI'])
 
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        from database.database import close_db
+        close_db()
+
     # Context processor to make current user & app info available in all templates
     @app.context_processor
     def inject_global_context():

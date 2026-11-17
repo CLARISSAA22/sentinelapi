@@ -38,7 +38,7 @@
                 <tbody id="dependencies-list-tbody">
                     <tr>
                         <td colspan="6" class="empty-state">
-                            <div class="empty-desc">Loading dependency matrix...</div>
+                            <div class="empty-desc">Loading dependency matrix</div>
                         </td>
                     </tr>
                 </tbody>
@@ -76,7 +76,7 @@ async function loadDependencies() {
 
         tbody.innerHTML = res.dependencies.map(d => `
             <tr>
-                <td><strong style="color: #fff;">${d.api_id.substring(0, 8)}...</strong></td>
+                <td><strong style="color: #fff;">${d.api_id.substring(0, 8)}</strong></td>
                 <td><span style="font-weight: 600; color: var(--cyan-primary);">${d.service_name}</span></td>
                 <td><code style="font-size: 11px;">${d.target_url || '-'}</code></td>
                 <td><span class="badge badge-info">${d.dependency_type}</span></td>

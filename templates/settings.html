@@ -188,6 +188,8 @@
 
 {% block extra_js %}
 <script>
+window.CURRENT_USER_ROLE = "{{ current_user.role }}";
+
 document.addEventListener('DOMContentLoaded', () => {
     loadUsers();
     loadAuditLogs();
@@ -227,6 +229,7 @@ async function loadUsers() {
             if (typeof renderAllIcons === 'function') renderAllIcons();
             return;
         }
+        const isCurrentUserOwner = (window.CURRENT_USER_ROLE === 'Owner');
         tbody.innerHTML = res.users.map(u => `
             <tr>
                 <td><strong style="color: #fff;">${u.username}</strong></td>
@@ -234,12 +237,18 @@ async function loadUsers() {
                 <td><span class="badge ${u.role === 'Owner' || u.role === 'Administrator' ? 'badge-critical' : 'badge-info'}">${u.role}</span></td>
                 <td style="font-size: 11px; color: var(--text-muted);">${u.created_at ? u.created_at.substring(0, 10) : '-'}</td>
                 <td>
+                    ${isCurrentUserOwner ? `
                     <select class="form-select" style="width: 150px; padding: 6px 10px; font-size: 12px;" onchange="changeUserRole('${u.id}', this.value)">
                         <option value="Security Analyst" ${u.role === 'Security Analyst' ? 'selected' : ''}>Security Analyst</option>
                         <option value="Administrator" ${u.role === 'Administrator' ? 'selected' : ''}>Administrator</option>
                         <option value="Viewer" ${u.role === 'Viewer' ? 'selected' : ''}>Viewer</option>
                         <option value="Owner" ${u.role === 'Owner' ? 'selected' : ''}>Owner</option>
                     </select>
+                    ` : `
+                    <span style="font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 4px;">
+                        <i data-icon="lock" data-size="12"></i> Owner Only
+                    </span>
+                    `}
                 </td>
             </tr>
         `).join('');
